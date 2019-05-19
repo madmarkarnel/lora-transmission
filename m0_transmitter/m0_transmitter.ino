@@ -1,15 +1,16 @@
 #include <SPI.h>
 #include <RH_RF95.h>
 
+//for m0
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 3
 
-/* for teensy
-#define RFM95_CS 10
-#define RFM95_RST 9
-#define RFM95_INT 2
-*/
+//// for teensy
+//#define RFM95_CS 10
+//#define RFM95_RST 9
+//#define RFM95_INT 2
+
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 433.0
@@ -24,7 +25,7 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 //initialize global variables
 char temp[DATALEN];   //lora
 uint8_t payload[RH_RF95_MAX_MESSAGE_LEN];
-char dummy_data[DATALEN] = ">>MADTA*TP:25.43*HM:70.20*";
+char dummy_data[DATALEN] = ">>MNGSA*b*016EFD2000026ED43000036EF73000046E114000056E034000066E2E4000076E144000086EEF3000096ED030000A6E0830000B6E3330000C6E1430000D6E363000*170325153449";
 // uint8_t len = sizeof(buf);
 
 void setup() {
