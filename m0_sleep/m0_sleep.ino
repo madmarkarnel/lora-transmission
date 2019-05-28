@@ -10,7 +10,7 @@
 #define DUEBAUD   9600
 #define DUESerial Serial1
 #define INTERRUPTPIN  6    //pin 11
-#define DUETRIG 7
+#define DUETRIG 10
 #define DEBUG 1
 #define VBATPIN A7
 //for m0
@@ -37,7 +37,12 @@ char fixTempHum[29] = "*TP:14.20*HM:99.00*PR:804.00";   //fix data
 char Ctimestamp[13] = ""; 
 char temperature[5] = "";
 
+char dummy_TS[13] = "190528153449";
+
 char *command = "ARQCMD6T";   //custom due command
+
+char streamBuffer[250];
+int customDueFlag = 0;        //for dat gathering
 
 void setup() {
   // put your setup code here, to run once:
@@ -54,10 +59,11 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(DUETRIG, LOW);
   Serial.println("initializing. . . ");
+    
 
   attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);  //LOW
 
-  init_Sleep();   //initialize sleep State (another method)
+  init_Sleep();   //initialize sleep State working!!!!
 
   delay(10000); //It's important to leave a delay so the board can more easily be reprogrammed
   flashLed(LED_BUILTIN, 5, 100);
@@ -70,8 +76,6 @@ void setup() {
 }
 
 void loop() {
-  // wakeAndSleep_git();
-  // wakeAndSleep_2();
   wakeAndSleep();
   // getAtcommand();
   // send_thru_lora(dummy_data);
@@ -85,11 +89,13 @@ void wakeAndSleep(){
     flashLed(LED_BUILTIN, 5, 100);
     Serial.println("interrupt detected");    
     attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
-    
+    /*
     readTimeStamp();
     build_message();
     send_thru_lora(dataToSend);
     delay(100);
+    */
+    get_Due_Data();
 
     setAlarm(); //set alm every 10 minutes
     // rtc.enableInterrupts(Every10Minute);  // every Minute
@@ -100,8 +106,11 @@ void wakeAndSleep(){
 
     OperationFlag = false;
   }
+  // working as of May 28, 2019
   attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
+  SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;   //disable systick interrupt
   LowPower.standby(); //enters sleep mode
+  SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;    //Enabale systick interrupt
 }
 
 void wakeAndSleep_working(){
@@ -131,8 +140,7 @@ void init_lora(){
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
 
-  Serial.println("LoRa TX Test!");
-
+  // Serial.println("LoRa TX Test!");
   // manual reset
   digitalWrite(RFM95_RST, LOW);
   delay(10);
@@ -173,33 +181,11 @@ void send_thru_lora(char* radiopacket){
   }
 
   payload[i] = (uint8_t)'\0';
-
   Serial.println((char*)payload);
 
   // Serial.println("sending payload!");
   rf95.send(payload, length);   //sending data to LoRa
-
   delay(100);  
-}
-
-void wakeAndSleep_git(){
-  if(OperationFlag){
-    flashLed(LED_BUILTIN, 5, 100);
-    Serial.println("interrupt detected");
-  /*
-    readTimeStamp();
-    build_message();
-    send_thru_lora(dataToSend);
-
-    rtc.enableInterrupts(Every10Minute);      // every minute
-    delay(75);
-    rtc.clearINTStatus(); // needed for the rtc to re-trigger
-  */
-    // LowPower.idle(IDLE_2);  //idle cpu
-    OperationFlag = false;
-  }
-  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
-  LowPower.standby(); //enters sleep mode
 }
 
 void wake() {
@@ -221,7 +207,6 @@ void build_message(){
 
   delay(10);
 }
-
 
 void flashLed(int pin, int times, int wait) {
   for (int i = 0; i < times; i++) {
@@ -268,15 +253,7 @@ void wakeAndSleep_2(){
   if(OperationFlag){
     flashLed(LED_BUILTIN, 5, 100);
     Serial.println("interrupt detected");
-/*    
-    // readTimeStamp();
-    // build_message();
-    // send_thru_lora(dataToSend);
 
-    rtc.enableInterrupts(Every10Minute);  // every 10Minute
-    delay(75);
-    rtc.clearINTStatus();                 // needed for the rtc to re-trigger
-*/
     // attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
     delay(20);
     // LowPower.standby(); //enters sleep mode
@@ -294,10 +271,73 @@ void wakeAndSleep_2(){
 }
 
 void get_Due_Data(){
+  int timestart = millis();
+  int timenow = millis();
+  uint8_t max_txt_limit = 0;
+  bool offFlag = true;
+
+  turn_ON_due();
+  delay(500);
+  DUESerial.write("ARQCMD6T\r\n");
+  delay(100);
+ 
+  readTimeStamp();
+
+  while (customDueFlag == 0){
+
+    for (int i = 0; i < 250; ++i) streamBuffer[i]=0x00;
+    DUESerial.readBytesUntil('\n',streamBuffer,250);
+    delay(1000);
+
+    if(strstr(streamBuffer, "#")){
+      if(strstr(streamBuffer, "<<")){
+        Serial.println("Getting DUE data. . .");
+
+        streamBuffer[strlen(streamBuffer) - 3] = '\0';
+
+        strncat(streamBuffer, "*", 1);
+        strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
+        // strncat(streamBuffer, dummy_TS, sizeof(dummy_TS));
+        strncat(streamBuffer, "<<", 2);
+        Serial.println(streamBuffer);
+
+        send_thru_lora(streamBuffer);
+
+        DUESerial.write("OK");
+        // band aid para maturn off ung due
+        max_txt_limit++;
+        Serial.println(max_txt_limit);
+        offFlag = true;
+        if((max_txt_limit > 2) && (offFlag == true)){
+          delay(500);
+          turn_OFF_due();
+          break;
+          // customDueFlag = 0;   
+        }
+      }
+      else{
+        Serial.println("Message incomplete");
+        DUESerial.write("NO");
+      }
+    }
+    else if(strstr(streamBuffer, "LORASTOP")){
+      Serial.println("done!");
+      DUESerial.write("OK");
+      turn_OFF_due();
+      streamBuffer[0] = '\0';
+      customDueFlag = 1;
+    }
+  }
+}
+
+void turn_ON_due(){
   Serial.println("Turning ON Custom Due. . .");
   digitalWrite(DUETRIG, HIGH);
-  delay(1000);
+  delay(100);
+}
 
-  readTimeStamp();
-  DUESerial.write(command);
+void turn_OFF_due(){
+  Serial.println("Turning OFF Custom Due. . .");
+  digitalWrite(DUETRIG, LOW);
+  delay(100);
 }

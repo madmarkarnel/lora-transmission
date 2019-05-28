@@ -46,7 +46,10 @@ void getAtcommand(){
     else if (command == "AT+READTEMP"){
       // Serial.print("RTC Temperature: ");
       readTemp();  
-    }       
+    } 
+    else if (command == "AT+DUE"){
+      get_Due_Data();
+    }             
     else{
       Serial.println(ERRORSTR);
     }
@@ -164,11 +167,28 @@ void setAlarm(){
   if (DEBUG == 1) {Serial.println(store_rtc);}
 }
 
-void getDueData(){
-  Serial.println("Turning ON Custom Due. . .");
-  digitalWrite(DUETRIG, HIGH);
-  delay(1000);
+void setAlarmEvery30(){
+  DateTime now = rtc.now(); //get the current date-time
 
-  readTimeStamp();
-  
+  if((now.minute() >= 0) && (now.minute() <=29)){
+    store_rtc = 30;
+  }
+  // else if((now.minute() >= 10) && (now.minute() <=19)){
+  //   store_rtc = 20;
+  // }
+  // else if((now.minute() >= 20) && (now.minute() <=29)){
+  //   store_rtc = 30;
+  // }
+  else if((now.minute() >= 30) && (now.minute() <=59)){
+    store_rtc = 0;
+  }
+  // else if((now.minute() >= 40) && (now.minute() <=49)){
+  //   store_rtc = 50;
+  // }
+  // else if((now.minute() >= 50) && (now.minute() <=59)){
+  //   store_rtc = 0;
+  // }  
+  rtc.enableInterrupts(store_rtc, 00);    // interrupt at (m,s)
+  if (DEBUG == 1) {Serial.print(" - next alarm: ");}
+  if (DEBUG == 1) {Serial.println(store_rtc);}
 }
