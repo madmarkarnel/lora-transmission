@@ -49,17 +49,26 @@ void getAtcommand(){
     } 
     else if (command == "AT+DUE"){
       get_Due_Data();
+    }
+    else if (command == "A"){
+      get_Due_Data();
+    }
+    else if (command == "EXIT"){
+      debug_flag == 0;
+      Serial.println("Exiting debug mode!");
     }             
     else{
       Serial.println(ERRORSTR);
     }
 }
 
+void debug_menu(){
+  Serial.println("Menu:");
+
+}
 
 void setupTime() {
-
   int MM = 0, DD = 0, YY = 0, hh = 0, mm = 0, ss = 0, dd = 0;
-
   Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));
   delay (50);
   //2018,11,15,11,32,30,2
@@ -141,9 +150,6 @@ void readTimeStamp(){
 void setAlarm(){
   DateTime now = rtc.now(); //get the current date-time
 
-  // if (DEBUG == 1) {Serial.print("Minutes: ");}
-  // if (DEBUG == 1) {Serial.println(now.minute());}  
-
   if((now.minute() >= 0) && (now.minute() <=9)){
     store_rtc = 10;
   }
@@ -163,32 +169,61 @@ void setAlarm(){
     store_rtc = 0;
   }  
   rtc.enableInterrupts(store_rtc, 00);    // interrupt at (m,s)
-  if (DEBUG == 1) {Serial.print(" - next alarm: ");}
+  if (DEBUG == 1) {Serial.print("Next alarm: ");}
   if (DEBUG == 1) {Serial.println(store_rtc);}
 }
 
-void setAlarmEvery30(){
+void setAlarmEvery30(char ABCD){
   DateTime now = rtc.now(); //get the current date-time
+  switch(ABCD){
+    case 'A':{
+      if((now.minute() >= 0) && (now.minute() <=29)){
+        store_rtc = 30;
+      }
+      else if((now.minute() >= 30) && (now.minute() <=59)){
+        store_rtc = 0;
+      }
+      enable_rtc_interrupt();
+      break;
+    }
+    case 'B':{
+      //do
+      if((now.minute() >= 0) && (now.minute() <=29)){
+        store_rtc = 35;
+      }
+      else if((now.minute() >= 30) && (now.minute() <=59)){
+        store_rtc = 5;
+      }
+      enable_rtc_interrupt();
+      break;
+    }
+    case 'C':{
+      //do
+      if((now.minute() >= 0) && (now.minute() <=29)){
+        store_rtc = 40;
+      }
+      else if((now.minute() >= 30) && (now.minute() <=59)){
+        store_rtc = 10;
+      }
+      enable_rtc_interrupt();
+      break;      
+    }
+    case 'D':{
+      //do
+      if((now.minute() >= 0) && (now.minute() <=29)){
+        store_rtc = 45;
+      }
+      else if((now.minute() >= 30) && (now.minute() <=59)){
+        store_rtc = 15;
+      }
+      enable_rtc_interrupt();
+      break;      
+    }
+  }
+}
 
-  if((now.minute() >= 0) && (now.minute() <=29)){
-    store_rtc = 30;
-  }
-  // else if((now.minute() >= 10) && (now.minute() <=19)){
-  //   store_rtc = 20;
-  // }
-  // else if((now.minute() >= 20) && (now.minute() <=29)){
-  //   store_rtc = 30;
-  // }
-  else if((now.minute() >= 30) && (now.minute() <=59)){
-    store_rtc = 0;
-  }
-  // else if((now.minute() >= 40) && (now.minute() <=49)){
-  //   store_rtc = 50;
-  // }
-  // else if((now.minute() >= 50) && (now.minute() <=59)){
-  //   store_rtc = 0;
-  // }  
+void enable_rtc_interrupt(){
   rtc.enableInterrupts(store_rtc, 00);    // interrupt at (m,s)
-  if (DEBUG == 1) {Serial.print(" - next alarm: ");}
-  if (DEBUG == 1) {Serial.println(store_rtc);}
+  if (DEBUG == 1) {Serial.print("Next alarm: ");}
+  if (DEBUG == 1) {Serial.println(store_rtc);}  
 }
