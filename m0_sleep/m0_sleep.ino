@@ -9,7 +9,7 @@
 #define BAUDRATE  115200
 #define DUEBAUD   9600
 #define DUESerial Serial1
-#define INTERRUPTPIN  6    //pin 11
+#define INTERRUPTPIN  6   
 #define DUETRIG 10
 #define DEBUG 1
 #define VBATPIN A7
@@ -20,13 +20,13 @@
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 433.0
 #define DATALEN 200       //max size of dummy length
+#define LORATIMEOUT 120000
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 //initialize global variables
 char dataToSend[DATALEN];   //lora
 uint8_t payload[RH_RF95_MAX_MESSAGE_LEN];
-// char dummy_data[DATALEN] = ">>MNGSA*b*016EFD2000026ED43000036EF73000046E114000056E034000066E2E4000076E144000086EEF3000096ED030000A6E0830000B6E3330000C6E1430000D6E363000*170325153449";
 
 uint8_t store_rtc = 0;   //store alarm
 
@@ -37,12 +37,14 @@ char fixTempHum[29] = "*TP:14.20*HM:99.00*PR:804.00";   //fix data
 char Ctimestamp[13] = ""; 
 char temperature[5] = "";
 
-char dummy_TS[13] = "190528153449";
-
-char *command = "ARQCMD6T";   //custom due command
-
 char streamBuffer[250];
-int customDueFlag = 0;        //for dat gathering
+int customDueFlag = 0;        //for data gathering
+
+long timestart = 0;
+long timenow = 0;
+uint8_t datalogger_flag = 0;
+uint8_t debug_flag = 0;
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -59,8 +61,7 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(DUETRIG, LOW);
   Serial.println("initializing. . . ");
-    
-
+  
   attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);  //LOW
 
   init_Sleep();   //initialize sleep State working!!!!
@@ -71,15 +72,26 @@ void setup() {
   // Enable interuupt every 10 minutes
   // rtc.enableInterrupts(store_rtc, 00);    // 10 minutes interval interrupt at (m,s)
   // kelangan ng rtc para ma-track ang timestamp downside magsample muna siya ng 1 minute then set na sa set time
-  rtc.enableInterrupts(Every10Minute);      // every minute, Second
+  // rtc.enableInterrupts(Every10Minute);      // every minute, Second
+  setAlarm();
   rf95.sleep();     //turn to sleep LoRa
 }
 
 void loop() {
+  int timestart = millis();
+
+  while((millis() - timestart < 20000) && (datalogger_flag == 0)){
+    if(Serial.available()){
+      Serial.println("Debug Mode!");
+      getAtcommand();
+      debug_flag = 1;
+    }
+    // else if(debug_flag == 0){
+    //   wakeAndSleep();
+    //   // datalogger_flag = 1;
+    // }
+  }
   wakeAndSleep();
-  // getAtcommand();
-  // send_thru_lora(dummy_data);
-  // delay(1000);
 }
 
 void wakeAndSleep(){
@@ -284,26 +296,35 @@ void get_Due_Data(){
   readTimeStamp();
 
   while (customDueFlag == 0){
+    //timeOut in case walang makuhang data sa due
+    while(timenow -timestart < LORATIMEOUT){
+      timenow = millis();
+      no_data_from_senslope();
+      break;
+    }
 
     for (int i = 0; i < 250; ++i) streamBuffer[i]=0x00;
     DUESerial.readBytesUntil('\n',streamBuffer,250);
     delay(1000);
 
-    if(strstr(streamBuffer, "#")){
+    if(strstr(streamBuffer, ">>")){
       if(strstr(streamBuffer, "<<")){
         Serial.println("Getting DUE data. . .");
 
         streamBuffer[strlen(streamBuffer) - 3] = '\0';
+        // streamBuffer[strlen(streamBuffer) - 15] = '\0';   //fix kasi may TIMESTAMP000
+        // strncat(streamBuffer, "*", 1);
 
-        strncat(streamBuffer, "*", 1);
         strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
         // strncat(streamBuffer, dummy_TS, sizeof(dummy_TS));
         strncat(streamBuffer, "<<", 2);
         Serial.println(streamBuffer);
 
         send_thru_lora(streamBuffer);
-
+        
+        flashLed(LED_BUILTIN, 2, 100);
         DUESerial.write("OK");
+        /*
         // band aid para maturn off ung due
         max_txt_limit++;
         Serial.println(max_txt_limit);
@@ -314,20 +335,34 @@ void get_Due_Data(){
           break;
           // customDueFlag = 0;   
         }
+        */
       }
       else{
         Serial.println("Message incomplete");
         DUESerial.write("NO");
       }
     }
-    else if(strstr(streamBuffer, "LORASTOP")){
+    else if(strstr(streamBuffer, "STOPLORA")){
       Serial.println("done!");
-      DUESerial.write("OK");
+      // DUESerial.write("OK");
       turn_OFF_due();
       streamBuffer[0] = '\0';
-      customDueFlag = 1;
+      // customDueFlag = 1;
+      flashLed(LED_BUILTIN, 4, 90);
+      break;
     }
   }
+  customDueFlag = 0;
+}
+
+void no_data_from_senslope(){
+  Serial.println("No data from senslope");
+  streamBuffer[0] = '\0';
+  strncpy(streamBuffer, ">>#NODATAFROMSENSLOPE<<", 27);
+  send_thru_lora(streamBuffer);
+  DUESerial.write("OK");
+  delay(100);
+  turn_OFF_due();
 }
 
 void turn_ON_due(){
