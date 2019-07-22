@@ -19,8 +19,8 @@
 #define RFM95_INT 3
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 433.0
-#define DATALEN 200       //max size of dummy length
-#define LORATIMEOUT 120000
+#define DATALEN 200           //max size of dummy length
+#define LORATIMEOUT 260000    //4 minutes 20 seconds timeout
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
@@ -28,23 +28,25 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 char dataToSend[DATALEN];   //lora
 uint8_t payload[RH_RF95_MAX_MESSAGE_LEN];
 
-uint8_t store_rtc = 0;   //store alarm
-
 volatile bool OperationFlag = false;    //interrupt handler
 
+char command[11] = "ARQCMD6T\r\n";
 char station_name[6] = "MADTA";
-char fixTempHum[29] = "*TP:14.20*HM:99.00*PR:804.00";   //fix data
 char Ctimestamp[13] = ""; 
 char temperature[5] = "";
 
 char streamBuffer[250];
 int customDueFlag = 0;        //for data gathering
+int sendToLoRa = 0;
 
-long timestart = 0;
-long timenow = 0;
+unsigned long timestart = 0;
+// unsigned long timenow = 0;
 uint8_t datalogger_flag = 0;
 uint8_t debug_flag = 0;
 
+//rtc related
+uint16_t store_rtc = 00;      //store alarm
+uint8_t alarm_setting = 2;    // ABCD ;[0]=0,[1]= 5,[2]=10,[3]=15
 
 void setup() {
   // put your setup code here, to run once:
@@ -66,31 +68,38 @@ void setup() {
 
   init_Sleep();   //initialize sleep State working!!!!
 
-  delay(10000); //It's important to leave a delay so the board can more easily be reprogrammed
+  delay(10000);   //It's important to leave a delay so the board can more easily be reprogrammed
   flashLed(LED_BUILTIN, 5, 100);
 
   // Enable interuupt every 10 minutes
   // rtc.enableInterrupts(store_rtc, 00);    // 10 minutes interval interrupt at (m,s)
   // kelangan ng rtc para ma-track ang timestamp downside magsample muna siya ng 1 minute then set na sa set time
   // rtc.enableInterrupts(Every10Minute);      // every minute, Second
-  setAlarm();
+  // setAlarm();
+  
+  setAlarmEvery30(alarm_setting);
+  // alarm30();
+  // setAlarm(); //set alm every 10 minutes
+
   rf95.sleep();     //turn to sleep LoRa
+  printMenu();
 }
 
 void loop() {
-  int timestart = millis();
+  unsigned long start = millis();
 
-  while((millis() - timestart < 20000) && (datalogger_flag == 0)){
-    if(Serial.available()){
-      Serial.println("Debug Mode!");
-      getAtcommand();
-      debug_flag = 1;
-    }
-    // else if(debug_flag == 0){
-    //   wakeAndSleep();
-    //   // datalogger_flag = 1;
-    // }
-  }
+  // if((millis() - start) > 120000){
+  //   Serial.println("Exit DEBUG mode!");
+  //   start = millis();
+  //   datalogger_flag = 1;
+  //   debug_flag = 1;
+  // }
+
+  // if((debug_flag == 0)){
+  //   serialCommands();
+  // }
+
+  // serialCommands();
   wakeAndSleep();
 }
 
@@ -101,27 +110,22 @@ void wakeAndSleep(){
     flashLed(LED_BUILTIN, 5, 100);
     Serial.println("interrupt detected");    
     attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
-    /*
-    readTimeStamp();
-    build_message();
-    send_thru_lora(dataToSend);
-    delay(100);
-    */
+
     get_Due_Data();
 
-    setAlarm(); //set alm every 10 minutes
-    // rtc.enableInterrupts(Every10Minute);  // every Minute
+    // setAlarm();             //set alm every 10 minutes
+    setAlarmEvery30(alarm_setting);
+
     delay(75);
-    rtc.clearINTStatus();                 // needed for the rtc to re-trigger
+    rtc.clearINTStatus();     // needed to re-trigger rtc
 
-    rf95.sleep();     //turn to sleep LoRa
-
+    rf95.sleep();
     OperationFlag = false;
   }
   // working as of May 28, 2019
   attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
   SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;   //disable systick interrupt
-  LowPower.standby(); //enters sleep mode
+  LowPower.standby();                           //enters sleep mode
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;    //Enabale systick interrupt
 }
 
@@ -137,22 +141,30 @@ void wakeAndSleep_working(){
     build_message();
     send_thru_lora(dataToSend);
     delay(100);
+    
+    // get_Due_Data();
 
-    rtc.enableInterrupts(Every10Minute);  // every 10Minute
+    // setAlarm(); //set alm every 10 minutes
+    
+    setAlarmEvery30(alarm_setting);
+    // rtc.enableInterrupts(Every10Minute);  // every Minute
     delay(75);
     rtc.clearINTStatus();                 // needed for the rtc to re-trigger
-    
+
+    rf95.sleep();     //turn to sleep LoRa
     OperationFlag = false;
   }
+  // working as of May 28, 2019
   attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
+  SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;   //disable systick interrupt
   LowPower.standby(); //enters sleep mode
+  SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;    //Enabale systick interrupt
 }
 
 void init_lora(){
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
 
-  // Serial.println("LoRa TX Test!");
   // manual reset
   digitalWrite(RFM95_RST, LOW);
   delay(10);
@@ -203,15 +215,15 @@ void send_thru_lora(char* radiopacket){
 void wake() {
   OperationFlag = true;
   //detach the interrupt in the ISR so that multiple ISRs are not called
-  detachInterrupt(digitalPinToInterrupt(INTERRUPTPIN)); // tanggalin muna
+  detachInterrupt(digitalPinToInterrupt(INTERRUPTPIN));
 }
 
 void build_message(){
   for(int i=0; i<DATALEN; i++) dataToSend[i] = 0;
   strncpy(dataToSend,">>", 2);
-  strncat(dataToSend, station_name, sizeof(station_name));
+  // strncat(dataToSend, station_name, sizeof(station_name));
   // strncat(dataToSend, "*TP:", 4);   strncat(dataToSend, temperature, sizeof(temperature)); 
-  strncat(dataToSend, fixTempHum, sizeof(fixTempHum));
+  // strncat(dataToSend, fixdataMadtb, sizeof(fixdataMadtb));
   strncat(dataToSend, "*", 1);
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
   // strncat(temp, "*TP:", 4);     strncat(temp, bme_tp, sizeof(bme_tp));  
@@ -246,9 +258,9 @@ void BatteryVoltage () {
 void init_Sleep(){
   //working to as of 05-17-2019
   SYSCTRL->XOSC32K.reg |=  (SYSCTRL_XOSC32K_RUNSTDBY | SYSCTRL_XOSC32K_ONDEMAND); // set external 32k oscillator to run when idle or sleep mode is chosen
-  REG_GCLK_CLKCTRL  |= GCLK_CLKCTRL_ID(GCM_EIC) |  // generic clock multiplexer id for the external interrupt controller
-                       GCLK_CLKCTRL_GEN_GCLK1 |  // generic clock 1 which is xosc32k
-                       GCLK_CLKCTRL_CLKEN;       // enable it
+  REG_GCLK_CLKCTRL  |= GCLK_CLKCTRL_ID(GCM_EIC) | // generic clock multiplexer id for the external interrupt controller
+                       GCLK_CLKCTRL_GEN_GCLK1 |   // generic clock 1 which is xosc32k
+                       GCLK_CLKCTRL_CLKEN;        // enable it
   while (GCLK->STATUS.bit.SYNCBUSY);              // write protected, wait for sync
 
   EIC->WAKEUP.reg |= EIC_WAKEUP_WAKEUPEN4;        // Set External Interrupt Controller to use channel 4 (pin 6)
@@ -258,7 +270,7 @@ void init_Sleep(){
   //PM->SLEEP.reg |= PM_SLEEP_IDLE_APB; // Idle2 - sleep CPU, AHB, and APB clocks
   
   // It is either Idle mode or Standby mode, not both. 
-  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;   // Enable Standby or "deep sleep" mode
+  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;              // Enable Standby or "deep sleep" mode
 }
 
 void wakeAndSleep_2(){
@@ -283,10 +295,7 @@ void wakeAndSleep_2(){
 }
 
 void get_Due_Data(){
-  int timestart = millis();
-  int timenow = millis();
-  uint8_t max_txt_limit = 0;
-  bool offFlag = true;
+  unsigned long start = millis();
 
   turn_ON_due();
   delay(500);
@@ -296,73 +305,58 @@ void get_Due_Data(){
   readTimeStamp();
 
   while (customDueFlag == 0){
-    //timeOut in case walang makuhang data sa due
-    while(timenow -timestart < LORATIMEOUT){
-      timenow = millis();
-      no_data_from_senslope();
-      break;
-    }
-
     for (int i = 0; i < 250; ++i) streamBuffer[i]=0x00;
     DUESerial.readBytesUntil('\n',streamBuffer,250);
-    delay(1000);
+    delay(500);
+
+    // timeOut in case walang makuhang data sa due
+    if((millis() - start) > LORATIMEOUT){
+      start = millis();
+      no_data_from_senslope();
+      customDueFlag = 1;
+    }
 
     if(strstr(streamBuffer, ">>")){
-      if(strstr(streamBuffer, "<<")){
+      if(strstr(streamBuffer, "*")){
         Serial.println("Getting DUE data. . .");
 
-        streamBuffer[strlen(streamBuffer) - 3] = '\0';
-        // streamBuffer[strlen(streamBuffer) - 15] = '\0';   //fix kasi may TIMESTAMP000
-        // strncat(streamBuffer, "*", 1);
+        // streamBuffer[strlen(streamBuffer) - 3] = '\0';
 
         strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
-        // strncat(streamBuffer, dummy_TS, sizeof(dummy_TS));
         strncat(streamBuffer, "<<", 2);
-        Serial.println(streamBuffer);
+        // Serial.println(streamBuffer);
 
         send_thru_lora(streamBuffer);
         
         flashLed(LED_BUILTIN, 2, 100);
         DUESerial.write("OK");
-        /*
-        // band aid para maturn off ung due
-        max_txt_limit++;
-        Serial.println(max_txt_limit);
-        offFlag = true;
-        if((max_txt_limit > 2) && (offFlag == true)){
-          delay(500);
-          turn_OFF_due();
-          break;
-          // customDueFlag = 0;   
-        }
-        */
       }
       else{
+        //maglagay ng counter max 5 then exit
         Serial.println("Message incomplete");
         DUESerial.write("NO");
       }
     }
     else if(strstr(streamBuffer, "STOPLORA")){
-      Serial.println("done!");
-      // DUESerial.write("OK");
+      Serial.println("Done getting DUE data!");
       turn_OFF_due();
       streamBuffer[0] = '\0';
-      // customDueFlag = 1;
       flashLed(LED_BUILTIN, 4, 90);
-      break;
+      customDueFlag = 1;
     }
   }
+  turn_OFF_due();
   customDueFlag = 0;
 }
 
 void no_data_from_senslope(){
+  readTimeStamp();
   Serial.println("No data from senslope");
   streamBuffer[0] = '\0';
-  strncpy(streamBuffer, ">>#NODATAFROMSENSLOPE<<", 27);
+  strncpy(streamBuffer, ">>NODATAFROMSENSLOPE<<", 27);
   send_thru_lora(streamBuffer);
-  DUESerial.write("OK");
   delay(100);
-  turn_OFF_due();
+  customDueFlag = 1;
 }
 
 void turn_ON_due(){
