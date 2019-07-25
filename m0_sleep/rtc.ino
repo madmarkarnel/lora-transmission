@@ -41,7 +41,7 @@ void getAtcommand(){
       get_Due_Data();
     }
     else if (command == "B"){
-      //do something
+      readFromFlashMem();
     }    
     else if (command == "C"){
       setAlarmInterval();
@@ -63,12 +63,14 @@ void getAtcommand(){
       Serial.println("Exiting debug mode!");
     }
     else if (command == "F"){
-      readFromFlashMem();
+      //do something
     }  
     else if (command == "Y"){
       Serial.print("Current command: ");
       sensCommand = passCommand.read();
       Serial.println(sensCommand.senslopeCommand);
+      Serial.print("Sensor Name: ");
+      Serial.println(sensCommand.stationName);
     }            
     else if (command == "Z"){
       //do something
@@ -83,11 +85,10 @@ void printMenu(){
   Serial.println(F("-------------------------------------"));
   Serial.println(F("[?] Print this menu"));
   Serial.println(F("[A] Sample sensor data"));
-  Serial.println(F("[B] Do something."));
+  Serial.println(F("[B] Print sending interval settings"));
   Serial.println(F("[C] Change LoRa sending time."));
   Serial.println(F("[D] Read RTC temperature."));
   Serial.println(F("[E] Exit Debug mode."));
-  Serial.println(F("[F] Print sending interval settings"));
   Serial.println(F("[R] Read Timestamp."));
   Serial.println(F("[S] Set date and time.")); 
   Serial.println(F("[Y] Print SENSLOPE command.")); 
@@ -113,7 +114,7 @@ void setAlarmInterval(){
   delay(1000);
   while(!Serial.available()){}
   if(Serial.available()){
-    Serial.setTimeout(5000);
+    Serial.setTimeout(8000);
     alarmSelect = Serial.parseInt();
     Serial.print("From user = ");
     Serial.println(alarmSelect);
@@ -129,17 +130,33 @@ void readFromFlashMem(){
   int fromAlarmStorage;
   fromAlarmStorage = alarmStorage.read();
   alarm_setting = fromAlarmStorage;
-  Serial.print("Alarm setting: ");
-  Serial.println(alarm_setting);
+  // Serial.print("Alarm setting: ");
+  // Serial.println(alarm_setting);
+  if(alarm_setting == 0){
+    Serial.println("Alarm every 00 and 30 minutes.");
+  }
+  else if(alarm_setting == 1){
+    Serial.println("Alarm every 05 and 35 minutes.");
+  }
+  else if(alarm_setting == 2){
+    Serial.println("Alarm every 10 and 40 minutes.");
+  }
+  else if(alarm_setting == 3){
+    Serial.println("Alarm every 15 and 45 minutes.");
+  }
 }
 
 void changeSensCommand(){
-  Serial.setTimeout(10000);
-  Serial.print("Insert command: ");
+  Serial.setTimeout(15000);
+  Serial.println("Insert command: ");
   String dynaCommand = Serial.readStringUntil('\n');
-  Serial.println(dynaCommand);
+  // Serial.println(dynaCommand);
+  Serial.println("Insert sensor name: ");
+  String sensorName = Serial.readStringUntil('\n');
+  // Serial.println(sensorName);
   dynaCommand.toCharArray(sensCommand.senslopeCommand, 50);
-  passCommand.write(sensCommand);
+  sensorName.toCharArray(sensCommand.stationName, 10);
+  passCommand.write(sensCommand);   //save to flash memory
 }
 
 void setupTime() {

@@ -46,13 +46,13 @@ uint8_t debug_flag = 0;
 
 //rtc related
 uint16_t store_rtc = 00;      //store alarm
-// uint8_t alarm_setting = 1;    // ABCD ;[0]=0,[1]= 5,[2]=10,[3]=15
 uint8_t alarm_setting;
 
 typedef struct {
   boolean valid;
   char senslopeCommand[50];
   char password[50];
+  char stationName[10];
 } Senslope;
 
 // Reserve a portion of flash memory to store an "int" variable
@@ -80,6 +80,7 @@ void setup() {
   init_Sleep();   //initialize sleep State working!!!!
 
   setAlarmEvery30(alarm_setting);     //sending settings
+  rf95.sleep();
 
   Serial.println("Press anything to go DEBUG mode!");
   unsigned long serStart = millis();
@@ -97,23 +98,16 @@ void setup() {
     }
   }
 
-  // delay(10000);   //It's important to leave a delay so the board can more easily be reprogrammed
   flashLed(LED_BUILTIN, 5, 100);
-
-  rf95.sleep();     //turn to sleep LoRa
-  // printMenu();
 }
 
 void loop() {
   while (debug_flag == 1){
-    /* code */
     getAtcommand();
   }
 
-  // wakeAndSleep();
+  wakeAndSleep();
   // getAtcommand();
-  Serial.println("EXIT!!!!!!!!!!!");
-  delay(1000);
 }
 
 void wakeAndSleep(){
@@ -306,6 +300,7 @@ void get_Due_Data(){
   turn_ON_due();
   delay(500);
   // DUESerial.write("ARQCMD6T\r\n");
+  sensCommand = passCommand.read();
   DUESerial.write(sensCommand.senslopeCommand);
   delay(100);
  
@@ -327,14 +322,10 @@ void get_Due_Data(){
       if(strstr(streamBuffer, "*")){
         Serial.println("Getting DUE data. . .");
 
-        // streamBuffer[strlen(streamBuffer) - 3] = '\0';
-
         strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
         strncat(streamBuffer, "<<", 2);
-        // Serial.println(streamBuffer);
 
         send_thru_lora(streamBuffer);
-        
         flashLed(LED_BUILTIN, 2, 100);
         DUESerial.write("OK");
       }
@@ -358,11 +349,18 @@ void get_Due_Data(){
 
 void no_data_from_senslope(){
   readTimeStamp();
+  sensCommand = passCommand.read();   //read from flash memory
+
   Serial.println("No data from senslope");
   streamBuffer[0] = '\0';
-  strncpy(streamBuffer, ">>NODATAFROMSENSLOPE<<", 27);
+  strncpy(streamBuffer,">>", 2);
+  strncat((streamBuffer), (sensCommand.stationName), (10));
+  strncat(streamBuffer, "*NODATAFROMSENSLOPE*", 22);
+  strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
+  strncat(streamBuffer, "<<", 2);
+  delay(50);
   send_thru_lora(streamBuffer);
-  delay(100);
+  delay(50);
   customDueFlag = 1;
 }
 
