@@ -37,83 +37,115 @@ void getAtcommand(){
       ate = false;
       Serial.println(OKSTR);
     }
-    else if (command == "AT+SETTS"){
-      setupTime();
-    }    
-    else if (command == "AT+READTS"){
-      readTimeStamp();
-    }  
-    else if (command == "AT+READTEMP"){
-      // Serial.print("RTC Temperature: ");
-      readTemp();  
-    } 
-    else if (command == "AT+DUE"){
-      get_Due_Data();
-    }
     else if (command == "A"){
       get_Due_Data();
     }
+    else if (command == "B"){
+      //do something
+    }    
     else if (command == "C"){
-      while(Serial.available()){
-        int x = Serial.read();
-        setAlarmEvery30(x);
-        break;
-      }
-      Serial.print("Alarm interval every: ");
-      Serial.println(store_rtc);
-      Serial.println("------------------------------------------------");
-      Serial.println("Enter alarm settings:");
-      Serial.println("[0] Alarm for every 0 and 30 minutes interval");
-      Serial.println("[1] Alarm for every 5 and 35 minutes interval");
-      Serial.println("[2] Alarm for every 10 and 40 minutes interval");
-      Serial.println("[3] Alarm for every 15 and 45 minutes interval");
-      Serial.println("------------------------------------------------");
+      setAlarmInterval();
+    }    
+    else if (command == "D"){
+      readTemp();
     }    
     else if (command == "R"){
       readTimeStamp();
     } 
-    else if (command == "M"){
+    else if (command == "?"){
       printMenu();
     } 
     else if (command == "S"){
       setupTime();
     }               
-    else if (command == "EXIT"){
-      debug_flag == 0;
+    else if (command == "E"){
+      debug_flag = 0;
       Serial.println("Exiting debug mode!");
     }
-    else if (command == "TEST"){
-      // setAlarmEvery30(alarm_setting);
-      wakeAndSleep_working();
-      // Serial.println("Setting ALARM to 30 minutes");
+    else if (command == "F"){
+      readFromFlashMem();
+    }  
+    else if (command == "Y"){
+      Serial.print("Current command: ");
+      sensCommand = passCommand.read();
+      Serial.println(sensCommand.senslopeCommand);
+    }            
+    else if (command == "Z"){
+      //do something
+      changeSensCommand();
     }                 
     else{
       Serial.println(ERRORSTR);
     }
 }
 
-void debug_menu(){
-  Serial.println("Menu:");
+void printMenu(){
+  Serial.println(F("-------------------------------------"));
+  Serial.println(F("[?] Print this menu"));
+  Serial.println(F("[A] Sample sensor data"));
+  Serial.println(F("[B] Do something."));
+  Serial.println(F("[C] Change LoRa sending time."));
+  Serial.println(F("[D] Read RTC temperature."));
+  Serial.println(F("[E] Exit Debug mode."));
+  Serial.println(F("[F] Print sending interval settings"));
+  Serial.println(F("[R] Read Timestamp."));
+  Serial.println(F("[S] Set date and time.")); 
+  Serial.println(F("[Y] Print SENSLOPE command.")); 
+  Serial.println(F("[Z] Change SENSLOPE command.")); 
+  Serial.println(F("-------------------------------------"));
+}
 
+void print_rtcInterval(){
+  Serial.print("Alarm interval every: ");
+  Serial.println(store_rtc);
+  Serial.println("------------------------------------------------");
+  Serial.println("Enter alarm settings:");
+  Serial.println("[0] Alarm for every 0 and 30 minutes interval");
+  Serial.println("[1] Alarm for every 5 and 35 minutes interval");
+  Serial.println("[2] Alarm for every 10 and 40 minutes interval");
+  Serial.println("[3] Alarm for every 15 and 45 minutes interval");
+  Serial.println("------------------------------------------------");
+}
+
+void setAlarmInterval(){
+  int alarmSelect;
+  print_rtcInterval();
+  delay(1000);
+  while(!Serial.available()){}
+  if(Serial.available()){
+    Serial.setTimeout(5000);
+    alarmSelect = Serial.parseInt();
+    Serial.print("From user = ");
+    Serial.println(alarmSelect);
+  }
+  // alarm_setting = alarmSelect;
+  // setAlarmEvery30(alarm_setting);
+  delay(50);
+  alarmStorage.write(alarmSelect);
+  delay(50);
+}
+
+void readFromFlashMem(){
+  int fromAlarmStorage;
+  fromAlarmStorage = alarmStorage.read();
+  alarm_setting = fromAlarmStorage;
+  Serial.print("Alarm setting: ");
+  Serial.println(alarm_setting);
+}
+
+void changeSensCommand(){
+  Serial.setTimeout(10000);
+  Serial.print("Insert command: ");
+  String dynaCommand = Serial.readStringUntil('\n');
+  Serial.println(dynaCommand);
+  dynaCommand.toCharArray(sensCommand.senslopeCommand, 50);
+  passCommand.write(sensCommand);
 }
 
 void setupTime() {
   int MM = 0, DD = 0, YY = 0, hh = 0, mm = 0, ss = 0, dd = 0;
-
   Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));
   delay (50);
-  /*
-  //2018,11,15,11,32,30,2
-  while (!Serial.available()) {}
-  if (Serial.available()) {
-    dd = Serial.parseInt();
-    DD = Serial.parseInt();
-    MM  = Serial.parseInt();
-    YY = Serial.parseInt();
-    hh = Serial.parseInt();
-    mm = Serial.parseInt();
-    ss = Serial.parseInt();
-  }*/
   
   while (!Serial.available()) {}
   if (Serial.available()) {
@@ -126,17 +158,9 @@ void setupTime() {
     dd = Serial.parseInt();
   }
   delay(10);
-  adjustDate(YY, MM, DD, hh, mm, ss, dd);
-  // adjustDate(dd, DD, MM, YY, hh, mm, ss);        
+  adjustDate(YY, MM, DD, hh, mm, ss, dd);    
   readTimeStamp();
 }
-
-/*
-void adjustDate(int weekday, int date, int month, int year, int hour, int min, int sec){
-  DateTime dt(weekday, date, month, year, hour, min, sec);
-  rtc.setDateTime(dt);  // adjust date-time as defined by 'dt'
-  // Serial.println(rtc.now().getEpoch());  //debug info
-} */
 
 void adjustDate(int year, int month, int date, int hour, int min, int sec, int weekday){
 	DateTime dt(year, month, date, hour, min, sec, weekday);
@@ -222,31 +246,9 @@ void setAlarm(){
   if (DEBUG == 1) {Serial.println(store_rtc);}
 }
 
-void alarm30(){
+void setAlarmEvery30(int alarmSET){
   DateTime now = rtc.now(); //get the current date-time
-  if((now.minute() >= 0) && (now.minute() <=29)){
-    store_rtc = 30;
-  }
-  else if((now.minute() >= 30) && (now.minute() <=59)){
-    store_rtc = 0;
-  }
-  enable_rtc_interrupt();
-}
-
-void alarm35(){
-  DateTime now = rtc.now(); //get the current date-time   
-  if((now.minute() >= 0) && (now.minute() <=29)){
-    store_rtc = 35;
-  }
-  else if((now.minute() >= 30) && (now.minute() <=59)){
-    store_rtc = 5;
-  }
-  enable_rtc_interrupt();
-}
-
-void setAlarmEvery30(uint8_t ABCD){
-  DateTime now = rtc.now(); //get the current date-time
-  switch(ABCD){
+  switch(alarmSET){
     case 0:{
       // Serial.println("set 0/30 . . .");
       if((now.minute() >= 0) && (now.minute() <=29)){
@@ -259,7 +261,6 @@ void setAlarmEvery30(uint8_t ABCD){
       break;
     }
     case 1:{
-      //do
       // Serial.println("set 5/35 . . .");
       if((now.minute() >= 0) && (now.minute() <=34)){
         store_rtc = 35;
@@ -271,7 +272,6 @@ void setAlarmEvery30(uint8_t ABCD){
       break;
     }
     case 2:{
-      //do
       // Serial.println("set 10/40 . . .");
       if((now.minute() >= 0) && (now.minute() <=39)){
         store_rtc = 40;
@@ -283,7 +283,6 @@ void setAlarmEvery30(uint8_t ABCD){
       break;      
     }
     case 3:{
-      //do
       // Serial.println("set 15/45 . . .");
       if((now.minute() >= 0) && (now.minute() <=44)){
         store_rtc = 45;
@@ -304,21 +303,6 @@ void enable_rtc_interrupt(){
   readTimeStamp();
 }
 
-void printMenu(){
-  Serial.println(F("-------------------------------------"));
-  Serial.println(F("[?] Print this menu"));
-  Serial.println(F("[A] Sample sensor data"));
-  Serial.println(F("[B] Read alarm interval."));
-  Serial.println(F("[C] Do something."));
-  Serial.println(F("[D] Read RTC temperature."));
-  Serial.println(F("[R] Read Timestamp."));
-  Serial.println(F("[S] Set date and time.")); 
-}
-
-void change(){
-  Serial.println(F("press C to change")); 
-}
-
 void serialCommands(){
   char command = Serial.read();
 
@@ -335,7 +319,7 @@ void serialCommands(){
     case 'B':{
       Serial.print("Alarm interval every: ");
       Serial.println(store_rtc);
-      change();
+  
       break;
       }    
     case 'C':{
@@ -378,48 +362,4 @@ void serialCommands(){
     // Serial.println("Invalid option");    
     break;
   }
-}
-
-void readSerial(){
-  while(Serial.available())
-    Serial.read();
-}
-
-uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) {
-  uint16_t buffidx = 0;
-  boolean timeoutvalid = true;
-  if (timeout == 0) timeoutvalid = false;
-
-  while (true) {
-    if (buffidx > maxbuff) {
-      //Serial.println(F("SPACE"));
-      break;
-    }
-
-    while (Serial.available()) {
-      char c =  Serial.read();
-
-      //Serial.print(c, HEX); Serial.print("#"); Serial.println(c);
-
-      if (c == '\r') continue;
-      if (c == 0xA) {
-        if (buffidx == 0)   // the first 0x0A is ignored
-          continue;
-
-        timeout = 0;         // the second 0x0A is the end of the line
-        timeoutvalid = true;
-        break;
-      }
-      buff[buffidx] = c;
-      buffidx++;
-    }
-
-    if (timeoutvalid && timeout == 0) {
-      //Serial.println(F("TIMEOUT"));
-      break;
-    }
-    delay(1);
-  }
-  buff[buffidx] = 0;  // null term
-  return buffidx;
 }

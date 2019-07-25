@@ -5,6 +5,7 @@
 #include <RH_RF95.h>
 #include <avr/dtostrf.h>   // dtostrf missing in Arduino Zero/Due
 #include <EnableInterrupt.h>
+#include <FlashStorage.h>
 
 #define BAUDRATE  115200
 #define DUEBAUD   9600
@@ -24,13 +25,12 @@
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
-//initialize global variables
+//initialize LoRa global variables
 char dataToSend[DATALEN];   //lora
 uint8_t payload[RH_RF95_MAX_MESSAGE_LEN];
 
 volatile bool OperationFlag = false;    //interrupt handler
 
-char command[11] = "ARQCMD6T\r\n";
 char station_name[6] = "MADTA";
 char Ctimestamp[13] = ""; 
 char temperature[5] = "";
@@ -41,12 +41,25 @@ int sendToLoRa = 0;
 
 unsigned long timestart = 0;
 // unsigned long timenow = 0;
-uint8_t datalogger_flag = 0;
+uint8_t serial_flag = 0;
 uint8_t debug_flag = 0;
 
 //rtc related
 uint16_t store_rtc = 00;      //store alarm
-uint8_t alarm_setting = 2;    // ABCD ;[0]=0,[1]= 5,[2]=10,[3]=15
+// uint8_t alarm_setting = 1;    // ABCD ;[0]=0,[1]= 5,[2]=10,[3]=15
+uint8_t alarm_setting;
+
+typedef struct {
+  boolean valid;
+  char senslopeCommand[50];
+  char password[50];
+} Senslope;
+
+// Reserve a portion of flash memory to store an "int" variable
+// and call it "alarmStorage".
+FlashStorage(alarmStorage, int);
+FlashStorage(passCommand, Senslope);
+Senslope sensCommand;
 
 void setup() {
   // put your setup code here, to run once:
@@ -62,45 +75,45 @@ void setup() {
 
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(DUETRIG, LOW);
-  Serial.println("initializing. . . ");
   
-  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);  //LOW
-
+  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
   init_Sleep();   //initialize sleep State working!!!!
 
-  delay(10000);   //It's important to leave a delay so the board can more easily be reprogrammed
+  setAlarmEvery30(alarm_setting);     //sending settings
+
+  Serial.println("Press anything to go DEBUG mode!");
+  unsigned long serStart = millis();
+  while(serial_flag == 0){
+    if(Serial.available()){
+      debug_flag = 1;
+      delay(100);
+      Serial.println("Debug Mode!");
+      serial_flag = 1;
+    }
+    // timeOut in case walang serial na makuha in ~10 seconds
+    if((millis() - serStart) > 10000){
+      serStart = millis();
+      serial_flag = 1;
+    }
+  }
+
+  // delay(10000);   //It's important to leave a delay so the board can more easily be reprogrammed
   flashLed(LED_BUILTIN, 5, 100);
 
-  // Enable interuupt every 10 minutes
-  // rtc.enableInterrupts(store_rtc, 00);    // 10 minutes interval interrupt at (m,s)
-  // kelangan ng rtc para ma-track ang timestamp downside magsample muna siya ng 1 minute then set na sa set time
-  // rtc.enableInterrupts(Every10Minute);      // every minute, Second
-  // setAlarm();
-  
-  setAlarmEvery30(alarm_setting);
-  // alarm30();
-  // setAlarm(); //set alm every 10 minutes
-
   rf95.sleep();     //turn to sleep LoRa
-  printMenu();
+  // printMenu();
 }
 
 void loop() {
-  unsigned long start = millis();
+  while (debug_flag == 1){
+    /* code */
+    getAtcommand();
+  }
 
-  // if((millis() - start) > 120000){
-  //   Serial.println("Exit DEBUG mode!");
-  //   start = millis();
-  //   datalogger_flag = 1;
-  //   debug_flag = 1;
-  // }
-
-  // if((debug_flag == 0)){
-  //   serialCommands();
-  // }
-
-  // serialCommands();
-  wakeAndSleep();
+  // wakeAndSleep();
+  // getAtcommand();
+  Serial.println("EXIT!!!!!!!!!!!");
+  delay(1000);
 }
 
 void wakeAndSleep(){
@@ -112,8 +125,6 @@ void wakeAndSleep(){
     attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
 
     get_Due_Data();
-
-    // setAlarm();             //set alm every 10 minutes
     setAlarmEvery30(alarm_setting);
 
     delay(75);
@@ -143,7 +154,6 @@ void wakeAndSleep_working(){
     delay(100);
     
     // get_Due_Data();
-
     // setAlarm(); //set alm every 10 minutes
     
     setAlarmEvery30(alarm_setting);
@@ -194,19 +204,15 @@ void init_lora(){
 void send_thru_lora(char* radiopacket){
   int length = sizeof(payload);
   int i=0, j=0;
-
   //do not stack
   for(i=0; i<200; i++){
     payload[i] = (uint8_t)'0';
   }
-
   for(i=0; i<length; i++){
     payload[i] = (uint8_t)radiopacket[i];
   }
-
   payload[i] = (uint8_t)'\0';
   Serial.println((char*)payload);
-
   // Serial.println("sending payload!");
   rf95.send(payload, length);   //sending data to LoRa
   delay(100);  
@@ -299,7 +305,8 @@ void get_Due_Data(){
 
   turn_ON_due();
   delay(500);
-  DUESerial.write("ARQCMD6T\r\n");
+  // DUESerial.write("ARQCMD6T\r\n");
+  DUESerial.write(sensCommand.senslopeCommand);
   delay(100);
  
   readTimeStamp();
