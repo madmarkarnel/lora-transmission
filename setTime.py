@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul 02 14:32:24 2018
+Created on Fri Aug 02 14:32:24 2019
 
-@author: MAD
+@author: Mark Arnel B. Domingo
 """
 import serial, time
 from datetime import datetime as dt
@@ -10,7 +10,7 @@ from datetime import datetime as dt
 
 ser = serial.Serial()
 #ser.port = '/dev/samplingusbport'
-ser.port = "COM38"
+ser.port = "COM21"
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS 
 ser.parity = serial.PARITY_NONE 
@@ -22,50 +22,36 @@ ser.dsrdtr = False
 ser.writeTimeout = 2    
 
 def main():
-    print "Setting RTC timestamp!"
+    print ('Setting RTC timestamp!')
     ser.open()
     
     time.sleep(1)
-    
-    '''
-    ser.write("at")
-    time.sleep(1)
-    res = ser.readlines()
-    print (ser)
-    time.sleep(.5)
-    '''
-    ser.write("S")
-    #ser.write("at+setts")
+
+    ser.write('S'.encode())
     time.sleep(1)
     
-    ser.write(dt.today().strftime("%Y,%m,%d,%H,%M,%S") + ',' + "0")
-    #ser.write("0" + ',' + dt.today().strftime("%d,%m,%Y,%H,%M,%S"))
+    timeStamp = str(dt.today().strftime("%Y,%m,%d,%H,%M,%S") + ',' + '0').encode()
     
-    print(dt.today().strftime("%Y,%m,%d,%H,%M,%S") + ',' + "0")
-    #print("0" + ',' + dt.today().strftime("%d,%m,%Y,%H,%M,%S"))
+    ser.write(timeStamp)
+    print("PC time: ", timeStamp.decode('ascii'))
     
     time.sleep(1)
-    #ser.write("at+readts")
-    ser.write("R")
+    
+    ser.write('R'.encode())
     
     ts = ser.readlines()
-    print(ts)
+    
+    print("RTC", ts[3].decode('ascii').strip())
 
     time.sleep(0.2)
-    ser.close
+    ser.close()
     
-'''    
-    time.sleep(3)
-#    ser.write("at+readts")
-    
-    
-    
-'''    
+   
     
 if __name__=='__main__':
     try:
 	    main()        
     except KeyboardInterrupt:
-        print "Aborting ..."
+        print ("Aborting ...")
     finally:
-        ser.close
+        ser.close()
