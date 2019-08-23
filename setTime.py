@@ -10,7 +10,7 @@ from datetime import datetime as dt
 
 ser = serial.Serial()
 #ser.port = '/dev/samplingusbport'
-ser.port = "COM54"
+ser.port = "COM53"
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS 
 ser.parity = serial.PARITY_NONE 
@@ -41,8 +41,9 @@ def main():
     
     ts = ser.readlines()
     
-    print("RTC", ts[3].decode('ascii').strip())
-
+    print("RTC", ts[2].decode('ascii').strip())
+    #print(ts)
+    
     time.sleep(0.2)
     ser.close()
     
