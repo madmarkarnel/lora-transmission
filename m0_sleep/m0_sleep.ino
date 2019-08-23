@@ -306,15 +306,25 @@ void init_Sleep()
 void get_Due_Data()
 {
   unsigned long start = millis();
+  char command[30];
 
   turn_ON_due();
   delay(500);
   // DUESerial.write("ARQCMD6T\r\n");
-  sensCommand = passCommand.read();
-  DUESerial.write(sensCommand.senslopeCommand);
-  delay(100);
-
   readTimeStamp();
+
+  sensCommand = passCommand.read();
+  command[0] = '\0';
+  strncpy((command), (sensCommand.senslopeCommand), (10));
+  strncat(command, "/", 1);
+  strncat(command, Ctimestamp, sizeof(Ctimestamp));
+  Serial.println(command);
+  DUESerial.write(command);
+
+  //original command
+  // sensCommand = passCommand.read();
+  // DUESerial.write(sensCommand.senslopeCommand);
+  delay(100);
 
   while (customDueFlag == 0)
   {
@@ -337,8 +347,9 @@ void get_Due_Data()
       {
         Serial.println("Getting DUE data. . .");
 
-        strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
-        strncat(streamBuffer, "<<", 2);
+        // removed
+        // strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
+        // strncat(streamBuffer, "<<", 2);
 
         send_thru_lora(streamBuffer);
         flashLed(LED_BUILTIN, 2, 100);

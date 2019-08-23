@@ -79,6 +79,8 @@ void getAtcommand()
   else if (command == "R")
   {
     readTimeStamp();
+    Serial.print("Timestamp: ");
+    Serial.println(Ctimestamp);
   }
   else if (command == "?")
   {
@@ -281,7 +283,7 @@ void readTimeStamp()
 
   ts.remove(0, 2); //remove 1st 2 data in ts
   ts.toCharArray(Ctimestamp, 13);
-
+/*
   if (DEBUG == 1)
   {
     Serial.print("Timestamp: ");
@@ -290,6 +292,7 @@ void readTimeStamp()
   {
     Serial.println(Ctimestamp);
   }
+*/
 }
 
 //default every 10 minutes interval
