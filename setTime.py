@@ -10,7 +10,7 @@ from datetime import datetime as dt
 
 ser = serial.Serial()
 #ser.port = '/dev/samplingusbport'
-ser.port = "COM53"
+ser.port = "COM56"
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS 
 ser.parity = serial.PARITY_NONE 
