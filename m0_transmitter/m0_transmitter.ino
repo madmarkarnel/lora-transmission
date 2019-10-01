@@ -13,7 +13,10 @@
 
 
 // Change to 434.0 or other frequency, must match RX's freq!
-#define RF95_FREQ 433.0
+// #define RF95_FREQ 433.0
+#define RF95_FREQ 915.0   // 900 MHz LoRa
+
+//dat lenght
 #define DATALEN 200       //max size of dummy length
 
 // Blinky on receipt
