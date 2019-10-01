@@ -90,6 +90,10 @@ void getAtcommand()
   {
     setupTime();
   }
+  else if (command == "P")
+  {
+    Serial.println("Read rain tips.");
+  }  
   else if (command == "E")
   {
     debug_flag = 0;
@@ -127,6 +131,7 @@ void printMenu()
   Serial.println(F("[C] Change LoRa sending time."));
   Serial.println(F("[D] Read RTC temperature."));
   Serial.println(F("[E] Exit Debug mode."));
+  Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[R] Read Timestamp."));
   Serial.println(F("[S] Set date and time."));
   Serial.println(F("[Y] Print SENSLOPE command."));

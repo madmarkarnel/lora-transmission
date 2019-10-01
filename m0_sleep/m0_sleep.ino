@@ -10,7 +10,7 @@
 #define BAUDRATE 115200
 #define DUEBAUD 9600
 #define DUESerial Serial1
-#define INTERRUPTPIN 6
+#define RTCINTPIN 6
 #define DUETRIG 10
 #define DEBUG 1
 #define VBATPIN A7
@@ -23,6 +23,9 @@
 #define DATALEN 200        //max size of dummy length
 #define LORATIMEOUT 260000 //4 minutes 20 seconds timeout
 
+#define DISK1 0x50         //eeprom address
+#define RAININT   5        //rainfall interrupt pin
+
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
@@ -33,7 +36,14 @@ char streamBuffer[250];
 int customDueFlag = 0; //for data gathering
 int sendToLoRa = 0;
 
-volatile bool OperationFlag = false; //interrupt handler
+//rain gauge reading
+byte regnInterrupt = 0;
+static unsigned long last_interrupt_time = 0;
+const unsigned int DEBOUNCE_TIME = 40;
+const unsigned int REFRESH_TIME = 4000;
+volatile int rainTips = 0;            //rain tips
+
+volatile bool OperationFlag = false;  //interrupt handler
 
 char station_name[6] = "MADTA";
 char Ctimestamp[13] = "";
@@ -43,7 +53,7 @@ unsigned long timestart = 0;
 uint8_t serial_flag = 0;
 uint8_t debug_flag = 0;
 
-uint16_t store_rtc = 00;    //store rtc alarm
+uint16_t store_rtc = 00; //store rtc alarm
 
 typedef struct
 {
@@ -75,7 +85,7 @@ void setup()
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(DUETRIG, LOW);
 
-  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
+  attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
   init_Sleep(); //initialize sleep State working!!!!
 
   setAlarmEvery30(alarmFromFlashMem()); //sending settings
@@ -121,7 +131,7 @@ void wakeAndSleep()
     flashLed(LED_BUILTIN, 5, 100);
 
     // Serial.println("interrupt detected");
-    // attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
+    // attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
 
     get_Due_Data();
     setAlarmEvery30(alarmFromFlashMem());
@@ -133,39 +143,7 @@ void wakeAndSleep()
     OperationFlag = false;
   }
   // working as of May 28, 2019
-  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
-  SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk; //disable systick interrupt
-  LowPower.standby();                         //enters sleep mode
-  SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;  //Enabale systick interrupt
-}
-
-void wakeAndSleep_working()
-{
-  // kelangan initialize muna ang init_Sleep(); na function para gumana external interrupt
-  if (OperationFlag)
-  {
-    // Whatever you want the board to do while awake goes here
-    flashLed(LED_BUILTIN, 5, 100);
-    Serial.println("interrupt detected");
-    attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
-
-    readTimeStamp();
-    build_message();
-    send_thru_lora(dataToSend);
-    delay(100);
-
-    // get_Due_Data();
-
-    setAlarmEvery30(alarmFromFlashMem());
-    // rtc.enableInterrupts(Every10Minute);  // every Minute
-    delay(75);
-    rtc.clearINTStatus(); // needed for the rtc to re-trigger
-
-    rf95.sleep(); //turn to sleep LoRa
-    OperationFlag = false;
-  }
-  // working as of May 28, 2019
-  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), wake, FALLING);
+  attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
   SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk; //disable systick interrupt
   LowPower.standby();                         //enters sleep mode
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;  //Enabale systick interrupt
@@ -231,7 +209,7 @@ void wake()
 {
   OperationFlag = true;
   //detach the interrupt in the ISR so that multiple ISRs are not called
-  detachInterrupt(digitalPinToInterrupt(INTERRUPTPIN));
+  detachInterrupt(digitalPinToInterrupt(RTCINTPIN));
 }
 
 void build_message()
@@ -405,4 +383,40 @@ void turn_OFF_due()
   Serial.println("Turning OFF Custom Due. . .");
   digitalWrite(DUETRIG, LOW);
   delay(100);
+}
+
+void writeEEPROM(int deviceaddress, unsigned int eeaddress, byte data)
+{
+  Wire.beginTransmission(deviceaddress);
+  Wire.write((int)(eeaddress >> 8));   // MSB
+  Wire.write((int)(eeaddress & 0xFF)); // LSB
+  Wire.write(data);
+  Wire.endTransmission();
+
+  delay(5);
+}
+
+byte readEEPROM(int deviceaddress, unsigned int eeaddress)
+{
+  byte rdata = 0xFF;
+
+  Wire.beginTransmission(deviceaddress);
+  Wire.write((int)(eeaddress >> 8));   // MSB
+  Wire.write((int)(eeaddress & 0xFF)); // LSB
+  Wire.endTransmission();
+
+  Wire.requestFrom(deviceaddress, 1);
+
+  if (Wire.available())
+    rdata = Wire.read();
+
+  return rdata;
+}
+
+void readRainfall() {
+  unsigned long interrupt_time = millis();
+  if (interrupt_time - last_interrupt_time > DEBOUNCE_TIME) {
+   rainTips++;
+  }
+  last_interrupt_time = interrupt_time;
 }
