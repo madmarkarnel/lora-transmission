@@ -111,6 +111,7 @@ void setup()
   }
 
   flashLed(LED_BUILTIN, 5, 100);
+  OperationFlag = false;
 }
 
 void loop()
@@ -118,10 +119,10 @@ void loop()
   while (debug_flag == 1)
   {
     getAtcommand();
+    OperationFlag = false;
   }
 
   wakeAndSleep();
-  // getAtcommand();
 }
 
 void wakeAndSleep()
