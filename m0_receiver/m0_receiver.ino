@@ -12,8 +12,8 @@
 //#define RFM95_INT 2
 
 // Change to 434.0 or other frequency, must match RX's freq!
-// #define RF95_FREQ 433.0
-#define RF95_FREQ 915.0 // 900 MHz LoRa
+ #define RF95_FREQ 433.0
+//#define RF95_FREQ 915.0 // 900 MHz LoRa
 
 // Blinky on receipt
 #define LED   13
@@ -182,4 +182,3 @@ void flashLed(int pin, int times, int wait)
     }
   }
 }
-
