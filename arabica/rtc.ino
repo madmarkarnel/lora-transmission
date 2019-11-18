@@ -103,6 +103,12 @@ void getAtcommand()
   {
     //do something
   }
+  else if (command == "V")
+  {
+    batteryVoltage();
+    buildVoltageMessage();
+    send_thru_lora(dataToSend);
+  }
   else if (command == "Y")
   {
     Serial.print("Current command: ");
@@ -134,6 +140,7 @@ void printMenu()
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[R] Read Timestamp."));
   Serial.println(F("[S] Set date and time."));
+  Serial.println(F("[V] Print feather voltage."));
   Serial.println(F("[Y] Print SENSLOPE command."));
   Serial.println(F("[Z] Change SENSLOPE command."));
   Serial.println(F("-------------------------------------"));

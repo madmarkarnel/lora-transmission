@@ -13,7 +13,7 @@
 #define RTCINTPIN 6
 #define DUETRIG 10
 #define DEBUG 1
-#define VBATPIN A7
+#define VBATPIN A5   //A7 built in A5 working
 //for m0
 #define RFM95_CS 8
 #define RFM95_RST 4
@@ -47,6 +47,7 @@ volatile bool OperationFlag = false;  //interrupt handler
 
 char station_name[6] = "MADTA";
 char Ctimestamp[13] = "";
+char featherVoltage[10] = "";
 
 unsigned long timestart = 0;
 // unsigned long timenow = 0;
@@ -81,6 +82,7 @@ void setup()
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(DUETRIG, OUTPUT);
+  pinMode(VBATPIN, INPUT);
 
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(DUETRIG, LOW);
@@ -111,7 +113,7 @@ void setup()
   }
 
   flashLed(LED_BUILTIN, 5, 100);
-  OperationFlag = false;
+  // OperationFlag = false;
 }
 
 void loop()
@@ -119,7 +121,7 @@ void loop()
   while (debug_flag == 1)
   {
     getAtcommand();
-    OperationFlag = false;
+    // OperationFlag = false;
   }
 
   wakeAndSleep();
@@ -213,19 +215,19 @@ void wake()
   detachInterrupt(digitalPinToInterrupt(RTCINTPIN));
 }
 
-void build_message()
+void buildVoltageMessage()
 {
   for (int i = 0; i < DATALEN; i++)
     dataToSend[i] = 0;
   strncpy(dataToSend, ">>", 2);
-  // strncat(dataToSend, station_name, sizeof(station_name));
-  // strncat(dataToSend, "*TP:", 4);   strncat(dataToSend, temperature, sizeof(temperature));
-  // strncat(dataToSend, fixdataMadtb, sizeof(fixdataMadtb));
+  // strncat(dataToSend, "VOLTAGE#", 1);
+  strncat((dataToSend), (sensCommand.stationName), (10));
+  strncat(dataToSend, "*VOLT:", 7);
+  strncat(dataToSend, featherVoltage, sizeof(featherVoltage));
   strncat(dataToSend, "*", 1);
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
-  // strncat(temp, "*TP:", 4);     strncat(temp, bme_tp, sizeof(bme_tp));
   strncat(dataToSend, "<<", 2);
-
+  // Serial.println(dataToSend);
   delay(10);
 }
 
@@ -244,23 +246,34 @@ void flashLed(int pin, int times, int wait)
 }
 
 // Measure battery voltage using divider on Feather M0
-void BatteryVoltage()
+void batteryVoltage()
 {
   float measuredvbat;
+  analogReadResolution(12);
   measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
-  measuredvbat *= 2;                  // we divided by 2, so multiply back
+  // measuredvbat *= 2;                  // we divided by 2, so multiply back
   measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
-  measuredvbat /= 1024;               // convert to voltage
-  // return measuredvbat;
-  if (DEBUG == 1)
-  {
-    Serial.print("BatteryVoltage: ");
-  }
-  if (DEBUG == 1)
-  {
-    Serial.println(measuredvbat);
-  }
+  // measuredvbat /= 1024;               // convert to voltage
+  measuredvbat /= 4095;               // convert to voltage
+  // measuredvbat /= 0.0909;   //R1-10k ; R2-1k
+  measuredvbat /= 0.26;   //R1-13.3k ; R2-4.7k
+  dtostrf(measuredvbat, 3, 2, featherVoltage);
+  Serial.print("BatteryVoltage: ");
+  Serial.println(featherVoltage);
+  // Serial.println(measuredvbat);
 }
+
+/*
+- interrupts EIC
+EXTERNAL_INT_2: A0, A5, 10
+EXTERNAL_INT_4: A3, 6
+EXTERNAL_INT_5: A4, 7
+EXTERNAL_INT_6: 8, SDA
+EXTERNAL_INT_7: 9, SCL
+EXTERNAL_INT_9: A2, 3
+EXTERNAL_INT_10: TX, MOSI
+EXTERNAL_INT_11: RX, SCK
+*/
 
 void init_Sleep()
 {
@@ -287,11 +300,19 @@ void get_Due_Data()
   unsigned long start = millis();
   char command[30];
 
+  // Send voltage reading of VBATPIN from feather
+  delay(50);
+  batteryVoltage();
+  buildVoltageMessage();
+  delay(10);
+  send_thru_lora(dataToSend);
+
+  // Turn ON trigger of custom due
   turn_ON_due();
   delay(500);
-  // DUESerial.write("ARQCMD6T\r\n");
   readTimeStamp();
 
+  //Get command strored from memory then adds timestamp
   sensCommand = passCommand.read();
   command[0] = '\0';
   strncpy((command), (sensCommand.senslopeCommand), (10));
@@ -384,34 +405,6 @@ void turn_OFF_due()
   Serial.println("Turning OFF Custom Due. . .");
   digitalWrite(DUETRIG, LOW);
   delay(100);
-}
-
-void writeEEPROM(int deviceaddress, unsigned int eeaddress, byte data)
-{
-  Wire.beginTransmission(deviceaddress);
-  Wire.write((int)(eeaddress >> 8));   // MSB
-  Wire.write((int)(eeaddress & 0xFF)); // LSB
-  Wire.write(data);
-  Wire.endTransmission();
-
-  delay(5);
-}
-
-byte readEEPROM(int deviceaddress, unsigned int eeaddress)
-{
-  byte rdata = 0xFF;
-
-  Wire.beginTransmission(deviceaddress);
-  Wire.write((int)(eeaddress >> 8));   // MSB
-  Wire.write((int)(eeaddress & 0xFF)); // LSB
-  Wire.endTransmission();
-
-  Wire.requestFrom(deviceaddress, 1);
-
-  if (Wire.available())
-    rdata = Wire.read();
-
-  return rdata;
 }
 
 void readRainfall() {
