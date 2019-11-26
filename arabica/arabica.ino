@@ -349,7 +349,9 @@ void get_Due_Data()
 
         // removed
         // strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
-        // strncat(streamBuffer, "<<", 2);
+        
+        //added 11-26-19
+        strncat(streamBuffer, "<<", 2);
 
         send_thru_lora(streamBuffer);
         flashLed(LED_BUILTIN, 2, 100);
