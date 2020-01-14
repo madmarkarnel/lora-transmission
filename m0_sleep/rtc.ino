@@ -90,9 +90,22 @@ void getAtcommand()
   {
     setupTime();
   }
+  else if (command == "O")
+  {
+    getCSQ();
+  }  
   else if (command == "P")
   {
-    Serial.println("Read rain tips.");
+    Serial.print("Rain tips: ");
+    Serial.println(rainTips);
+    delay(20);
+    // resetRainTips();
+    //re-enable rain gauge interrupt before going to sleep
+    attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING); 
+  }
+  else if (command == "Q")
+  {
+    resetRainTips();
   }  
   else if (command == "E")
   {
@@ -131,7 +144,9 @@ void printMenu()
   Serial.println(F("[C] Change LoRa sending time."));
   Serial.println(F("[D] Read RTC temperature."));
   Serial.println(F("[E] Exit Debug mode."));
+  Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
+  Serial.println(F("[Q] Reset rain tips."));
   Serial.println(F("[R] Read Timestamp."));
   Serial.println(F("[S] Set date and time."));
   Serial.println(F("[Y] Print SENSLOPE command."));
