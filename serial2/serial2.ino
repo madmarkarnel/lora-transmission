@@ -1,32 +1,21 @@
 #include <Arduino.h>          // required before wiring_private.h
 #include "wiring_private.h"   // pinPeripheral() function
- 
+
+#define BAUDRATE  115200
+#define GSMBAUDRATE 9600
+#define GSMSerial Serial2
+#define MAXSMS 168
+
 //Pin 11-rx ; 10-tx
 Uart Serial2 (&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
-
 void SERCOM1_Handler()
 {
   Serial2.IrqHandler();
 }
 
-#define BAUDRATE  115200
-#define GSMBAUDRATE 9600
-#define GSMSerial Serial2
-
-char msgToSend[250];
-char msgToSend1[250];
-char gsmReply[10];
-
-String message = ("This is my first ARDUINO PDU convertion message");                                 //recipient's phone number in international format
-String phone_nr = ("639161640761");                                   
-
-String smsCMD = ("AT+CMGS=");
-String quote = ("\"");
-String CR = ("\r");
-
-String messageToSend;
-String first_const = ("0011000C9136");    //country code last two digits
-String second_const = ("0000AA");
+char serverNumber[15] = "639161640761"; 
+// char testMessage[168] = "Test of char message";      
+char testMessage[168] = "adfbsddfbsdfbsdfbsdfbsdfhbfauhadldfvkjdcvludfvbkjdfb78342u32hh2eu232md2i3i3ho2hr823i2nd2h2oe92832nfu2hefh3h8f29e0f239298ef9e8928ehf928h2098e208ehh02e";                            
 
 void setup()
 {
@@ -39,13 +28,11 @@ void setup()
   pinPeripheral(10, PIO_SERCOM);
   pinPeripheral(11, PIO_SERCOM);
 
-  Serial.println("AT");
-  GSMSerial.write("AT\r");
-  delay(500);
-  updateSerial();
+  getCSQ();
 
   flashLed(LED_BUILTIN, 5, 100);
-  sendMessage();
+
+  // sendMessage("kamote testing message", "639161640761");
 }
 
 void loop()
@@ -54,6 +41,66 @@ void loop()
   // updateSerial();
   // pduSET();
   // delay(3000);
+}
+
+void sendMessage(char *inputMessage, char *serverNumber){
+  char msgToSend[250];
+  int maxPhoneNum = 15;
+  char sendingNumber[15];
+
+  String smsCMD = ("AT+CMGS=");
+  String quote = ("\"");
+  String CR = ("\r");
+
+  //inputMessage
+  for (int i = 0; i < 168; i++)
+  {
+    msgToSend[i] = (uint8_t)'0';
+  }
+  for (int i = 0; i < 168; i++)
+  {
+    msgToSend[i] = (uint8_t)inputMessage[i];
+  }
+  //serverNumber
+  for (int i = 0; i < maxPhoneNum; i++)
+  {
+    sendingNumber[i] = (uint8_t)'0';
+  }
+  for (int i = 0; i < maxPhoneNum; i++)
+  {
+    sendingNumber[i] = (uint8_t)serverNumber[i];
+  }
+
+  GSMSerial.write("AT\r");
+  delay(500);
+  updateSerial();   //prints the reply of gsm
+
+  GSMSerial.write("AT+CMGF=1\r");   
+  delay(500);
+  updateSerial();   //prints the reply of gsm
+
+  String rawMsg = smsCMD + quote + serverNumber + quote + CR;
+  rawMsg.toCharArray(msgToSend, 250);
+  strncat(msgToSend, inputMessage, 168);
+  
+  GSMSerial.write(msgToSend);
+  delay(500);
+  updateSerial();   //print the reply of the gsm
+
+  GSMSerial.write(26);  //ctrl Z
+}
+
+void getCSQ(){
+  // char csqStore[20];
+
+  GSMSerial.write("AT+CSQ\r");
+  delay(300);
+  String csq = GSMSerial.readString();
+  // csq.toCharArray(csqStore, 20);
+  // char csq = (char)GSMSerial.read();
+  Serial.println(csq);
+
+  // sendMessage(csqStore, serverNumber);
 }
 
 void updateSerial()
@@ -67,28 +114,6 @@ void updateSerial()
   {
     Serial.write(GSMSerial.read());     //Forward what Software Serial received to Serial Port
   }
-}
-
-void sendMessage(){
-
-  GSMSerial.write("AT\r");
-  delay(500);
-  updateSerial();
-
-  GSMSerial.write("AT+CMGF=1\r");   
-  delay(1000);
-  updateSerial();
-
-  String rawMsg = smsCMD + quote + phone_nr + quote + CR + message;
-  rawMsg.toCharArray(msgToSend, 250);
-  Serial.println(msgToSend);
-  
-  GSMSerial.write(msgToSend);
-  delay(1000);
-  updateSerial();
-
-  GSMSerial.write(26);  //ctrl Z
-  updateSerial();
 }
 
 
