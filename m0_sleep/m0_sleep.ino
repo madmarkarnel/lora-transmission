@@ -3,11 +3,11 @@
 #include "Sodaq_DS3231.h"
 #include <SPI.h>
 #include <RH_RF95.h>
-#include <avr/dtostrf.h>        // dtostrf missing in Arduino Zero/Due
+#include <avr/dtostrf.h> // dtostrf missing in Arduino Zero/Due
 #include <EnableInterrupt.h>
 #include <FlashStorage.h>
-#include <Arduino.h>          // required before wiring_private.h
-#include "wiring_private.h"   // pinPeripheral() function
+#include <Arduino.h>        // required before wiring_private.h
+#include "wiring_private.h" // pinPeripheral() function
 
 //gsm related
 #define GSMBAUDRATE 9600
@@ -18,9 +18,10 @@
 #define DUEBAUD 9600
 #define DUESerial Serial1
 #define RTCINTPIN 6
-#define DUETRIG 9   //default is pin 10 ; changed from pin 10 to pin 9
+#define DUETRIG 9     //default is pin 10 ; changed from pin 10 to pin 9
 #define DEBUG 1
 #define VBATPIN A7
+
 //for m0
 #define RFM95_CS 8
 #define RFM95_RST 4
@@ -28,21 +29,21 @@
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 433.0
 #define DATALEN 200        //max size of dummy length
-#define LORATIMEOUT 260000 //4 minutes 20 seconds timeout
+#define LORATIMEOUT 60000 //260 000 ~4 minutes 20 seconds timeout
 
-#define RAININT A4    //rainfall interrupt pin A4
+#define RAININT A4 //rainfall interrupt pin A4
 
 //Pin 11-rx ; 10-tx (GSM comms)
-Uart Serial2 (&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
+Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
 void SERCOM1_Handler()
 {
   Serial2.IrqHandler();
 }
 
 //test GSM testMessage
-char serverNumber[15] = "639954645704"; 
-// char testMessage[168] = "Test of char message";      
-char testMessage[168] = "adfbsddfbsdfbsdfbsdfbsdfhbfauhadldfvkjdcvludfvbkjdfb78342u32hh2eu232md2i3i3ho2hr823i2nd2h2oe92832nfu2hefh3h8f29e0f239298ef9e8928ehf928h2098e208ehh02e";                            
+char serverNumber[15] = "639954645704";
+// char testMessage[168] = "Test of char message";
+char testMessage[168] = "adfbsddfbsdfbsdfbsdfbsdfhbfauhadldfvkjdcvludfvbkjdfb78342u32hh2eu232md2i3i3ho2hr823i2nd2h2oe92832nfu2hefh3h8f29e0f239298ef9e8928ehf928h2098e208ehh02e";
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
@@ -50,9 +51,11 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 //initialize LoRa global variables
 char dataToSend[DATALEN]; //lora
 uint8_t payload[RH_RF95_MAX_MESSAGE_LEN];
-char streamBuffer[250];
-int customDueFlag = 0; //for data gathering
+uint8_t len = sizeof(payload);
+char streamBuffer[250];     //store message
+int customDueFlag = 0;      //for data gathering
 int sendToLoRa = 0;
+int tx_RSSI = 0;      //tx rssi
 
 //rain gauge reading
 static unsigned long last_interrupt_time = 0;
@@ -61,8 +64,8 @@ const unsigned int DEBOUNCE_TIME = 40; //40
 float rainTips = 0.00;
 char sendRainTip[5] = "0.00";
 
-volatile bool rainFallFlag = false;         //rain tips
-volatile bool OperationFlag = false;        //rtc interrupt handler
+volatile bool rainFallFlag = false;  //rain tips
+volatile bool OperationFlag = false; //rtc interrupt handler
 
 char station_name[6] = "MADTA";
 char Ctimestamp[13] = "";
@@ -74,6 +77,9 @@ uint8_t serial_flag = 0;
 uint8_t debug_flag = 0;
 
 uint16_t store_rtc = 00; //store rtc alarm
+
+//gsm
+unsigned char SigQ[50];
 
 typedef struct
 {
@@ -100,9 +106,6 @@ void setup()
   pinPeripheral(10, PIO_SERCOM);
   pinPeripheral(11, PIO_SERCOM);
 
-  delay(1000);
-  sendMessage("GSM is Alive!", serverNumber);
-
   Wire.begin();
   rtc.begin();
   init_lora();
@@ -114,7 +117,7 @@ void setup()
   digitalWrite(DUETRIG, LOW);
 
   //rain gauge interrupt
-  attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING); 
+  attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
 
   attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
   init_Sleep(); //initialize sleep State working!!!!
@@ -122,7 +125,14 @@ void setup()
   setAlarmEvery30(alarmFromFlashMem()); //alarm settings
   rf95.sleep();
 
+  GSMSerial.write("AT\r");
+  delay(10);
+  GSMSerial.write("ATE0\r"); //turn off echo
+  delay(10);
+  sendMessage("GSM is Alive!", serverNumber);
+
   Serial.println("Press '?' to go DEBUG mode!");
+
   unsigned long serStart = millis();
   while (serial_flag == 0)
   {
@@ -140,16 +150,15 @@ void setup()
       serial_flag = 1;
     }
   }
-
+  sleepGSM();
   flashLed(LED_BUILTIN, 5, 100);
-  // OperationFlag = false;
-  // rainFallFlag = false;
 }
 
 void loop()
 {
   while (debug_flag == 1)
   {
+    // wakeGSM();
     getAtcommand();
     // readRainTips();
     // OperationFlag = false;
@@ -171,14 +180,14 @@ void wakeAndSleep()
     delay(10);
     resetRainTips();
 
-    get_Due_Data();   //get data from sensors
+    get_Due_Data(); //get data from sensors
 
     //real time clock alarm settings
     setAlarmEvery30(alarmFromFlashMem());
     delay(75);
     rtc.clearINTStatus(); // needed to re-trigger rtc
 
-    rf95.sleep();   //sleep LoRa
+    rf95.sleep(); //sleep LoRa
     OperationFlag = false;
   }
   // working as of May 28, 2019
@@ -194,7 +203,7 @@ void wakeAndSleep()
 void sleepNow()
 {
   //re-enable rain gauge interrupt before going to sleep
-  // attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING); 
+  // attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
   SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk; //disable systick interrupt
   LowPower.standby();                         //enters sleep mode
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;  //Enabale systick interrupt
@@ -254,6 +263,47 @@ void send_thru_lora(char *radiopacket)
   // Serial.println("sending payload!");
   rf95.send(payload, length); //sending data to LoRa
   delay(100);
+}
+
+void receive_lora_data()
+{
+  if (rf95.available())
+  {
+    // Should be a message for us now
+
+    if (rf95.recv(payload, &len))
+    {
+      // digitalWrite(LED, HIGH);
+
+      int i = 0;
+      for (i = 0; i < len; ++i)
+      {
+        streamBuffer[i] = (uint8_t)payload[i];
+      }
+      //received from tx
+      streamBuffer[i] = (uint8_t)'\0';
+      Serial.println(streamBuffer);
+
+      //print RSSI values
+      tx_RSSI = (rf95.lastRssi(), DEC);
+      Serial.print("RSSI: ");
+      Serial.println(tx_RSSI);
+      // checkRSSI(tx_RSSI);
+
+      /*
+      // Send a reply
+      uint8_t data[] = "mad back to you";
+      rf95.send(data, sizeof(data));
+      rf95.waitPacketSent();
+      Serial.println("Sent a reply");
+      digitalWrite(LED, LOW);
+      */
+    }
+    else
+    {
+      Serial.println("Receive failed");
+    }
+  }
 }
 
 void wake()
@@ -348,7 +398,8 @@ void init_Sleep()
   SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; // Enable Standby or "deep sleep" mode
 }
 
-void getPwrdFromMemory(){
+void getPwrdFromMemory()
+{
   sensCommand = passCommand.read();
 }
 
@@ -400,7 +451,8 @@ void get_Due_Data()
         strncat(streamBuffer, "<<", 2);
 
         // send_thru_lora(streamBuffer);            //send to LoRa
-        sendMessage(streamBuffer, serverNumber);    //send to GSM
+        Serial.println(streamBuffer);
+        sendMessage(streamBuffer, serverNumber); //send to GSM
         flashLed(LED_BUILTIN, 2, 100);
         DUESerial.write("OK");
       }
@@ -414,7 +466,7 @@ void get_Due_Data()
     else if (strstr(streamBuffer, "STOPLORA"))
     {
       Serial.println("Done getting DUE data!");
-      turn_OFF_due();
+      // turn_OFF_due();
       streamBuffer[0] = '\0';
       flashLed(LED_BUILTIN, 4, 90);
       customDueFlag = 1;
@@ -438,7 +490,7 @@ void no_data_from_senslope()
   strncat(streamBuffer, "<<", 2);
   delay(50);
   // send_thru_lora(streamBuffer);
-  sendMessage(streamBuffer, serverNumber);    //send to GSM
+  sendMessage(streamBuffer, serverNumber); //send to GSM
   delay(50);
   customDueFlag = 1;
 }
@@ -475,35 +527,39 @@ void rainISR()
 
 void resetRainTips()
 {
-  rainTips = 0;
+  rainTips = 0.00;
+  dtostrf(rainTips, 3, 2, sendRainTip); //convert rainTip to char
   Serial.print("Rain tips: ");
   Serial.println(rainTips);
 }
 
-void readRainTips(){
+void readRainTips()
+{
   if (OperationFlag)
   {
+    wakeGSM();
     flashLed(LED_BUILTIN, 5, 100);
 
     build_message();
     delay(10);
     sendMessage(dataToSend, serverNumber);
-    delay(10);
+    delay(50);
 
     resetRainTips();
 
-    get_Due_Data();   //get data from sensors
+    get_Due_Data(); //get data from sensors
 
     //real time clock alarm settings
     setAlarmEvery30(alarmFromFlashMem());
     delay(75);
     rtc.clearINTStatus(); // needed to re-trigger rtc
 
-    rf95.sleep();   //sleep LoRa
-
+    rf95.sleep(); //sleep LoRa
+    sleepGSM();
+    
     delay(75);
     attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
-
+    delay(100);
     OperationFlag = false;
   }
 
@@ -517,102 +573,29 @@ void readRainTips(){
       rainFallFlag = false;
     }
     */
+
+    // wakeGSM();
     flashLed(LED_BUILTIN, 2, 100);
     unsigned long interrupt_time = millis();
     if (interrupt_time - last_interrupt_time > DEBOUNCE_TIME)
     {
       // rainTips++;
-      rainTips+=0.5;
+      rainTips += 0.5;
     }
     last_interrupt_time = interrupt_time;
-    dtostrf(rainTips, 3, 2, sendRainTip);   //comnvert rainTip to char
+    dtostrf(rainTips, 3, 2, sendRainTip); //comnvert rainTip to char
 
     build_message();
-    delay(50);
-    sendMessage(dataToSend, serverNumber);
-    delay(50);
+    // delay(50);
+    // sendMessage(dataToSend, serverNumber);
+    // delay(50);
 
-    attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);  //re-enable rain gauge interrupt before going to sleep
-
+    attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING); //re-enable rain gauge interrupt before going to sleep
     rainFallFlag = false;
   }
 
-  attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);  //re-enable rain gauge interrupt before going to sleep
-  // flashLed(LED_BUILTIN, 3, 100);
-
+  attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
+  // sleepGSM();
   sleepNow();
-}
-
-void sendMessage(char *inputMessage, char *serverNumber){
-  char msgToSend[250];
-  int maxPhoneNum = 15;
-  char sendingNumber[15];
-
-  String smsCMD = ("AT+CMGS=");
-  String quote = ("\"");
-  String CR = ("\r");
-
-  //inputMessage
-  for (int i = 0; i < 168; i++)
-  {
-    msgToSend[i] = (uint8_t)'0';
-  }
-  for (int i = 0; i < 168; i++)
-  {
-    msgToSend[i] = (uint8_t)inputMessage[i];
-  }
-  //serverNumber
-  for (int i = 0; i < maxPhoneNum; i++)
-  {
-    sendingNumber[i] = (uint8_t)'0';
-  }
-  for (int i = 0; i < maxPhoneNum; i++)
-  {
-    sendingNumber[i] = (uint8_t)serverNumber[i];
-  }
-
-  GSMSerial.write("AT\r");
-  delay(500);
-  // updateSerial();   //prints the reply of gsm
-
-  GSMSerial.write("AT+CMGF=1\r");   
-  delay(500);
-  // updateSerial();   //prints the reply of gsm
-
-  String rawMsg = smsCMD + quote + serverNumber + quote + CR;
-  rawMsg.toCharArray(msgToSend, 250);
-  strncat(msgToSend, inputMessage, 168);
-  
-  GSMSerial.write(msgToSend);
-  delay(500);
-  // updateSerial();   //print the reply of the gsm
-
-  GSMSerial.write(26);  //ctrl Z
-  updateSerial();
-}
-
-void getCSQ(){
-  // char csqStore[20];
-
-  GSMSerial.write("AT+CSQ\r");
-  delay(300);
-  String csq = GSMSerial.readString();
-  // csq.toCharArray(csqStore, 20);
-  // char csq = (char)GSMSerial.read();
-  Serial.println(csq);
-
-  // sendMessage(csqStore, serverNumber);
-}
-
-void updateSerial()
-{
-  delay(500);
-  while (Serial.available()) 
-  {
-    GSMSerial.write(Serial.read());     //Forward what Serial received to Software Serial Port
-  }
-  while(GSMSerial.available()) 
-  {
-    Serial.write(GSMSerial.read());     //Forward what Software Serial received to Serial Port
-  }
 }

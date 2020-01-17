@@ -8,7 +8,7 @@ bool ate = false;
 
 void getAtcommand()
 {
-
+  // wakeGSM();
   String serial_line, command;
   int i_equals = 0;
 
@@ -107,8 +107,17 @@ void getAtcommand()
   {
     resetRainTips();
   }  
+  else if (command == "V")
+  {
+    sleepGSM();
+  }
+  else if (command == "W")
+  {
+    wakeGSM();
+  }
   else if (command == "E")
   {
+    sleepGSM();
     debug_flag = 0;
     Serial.println("Exiting debug mode!");
   }
@@ -149,6 +158,8 @@ void printMenu()
   Serial.println(F("[Q] Reset rain tips."));
   Serial.println(F("[R] Read Timestamp."));
   Serial.println(F("[S] Set date and time."));
+  Serial.println(F("[V] Sleep GSM"));
+  Serial.println(F("[W] Wake GSM"));
   Serial.println(F("[Y] Print SENSLOPE command."));
   Serial.println(F("[Z] Change SENSLOPE command."));
   Serial.println(F("-------------------------------------"));
