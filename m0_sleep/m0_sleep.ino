@@ -1,3 +1,18 @@
+/*
+Arabica Datalogger
+
+- Sends sensor data via LoRa for version 4 datalogger.
+- Built-in rtc with configurable wake interrupt.
+- Low power mode ~1mA
+
+The circuit:
+* Arabica Board with rtc
+
+Created: 12 October 2019
+By : Mark Arnel B. Domingo
+Modified: 23 January 2020
+*/
+
 #include <Wire.h>
 #include <LowPower.h>
 #include "Sodaq_DS3231.h"
@@ -30,8 +45,7 @@
 #define RF95_FREQ 433.0
 #define DATALEN 200        //max size of dummy length
 #define LORATIMEOUT 60000 //260 000 ~4 minutes 20 seconds timeout
-
-#define RAININT A4 //rainfall interrupt pin A4
+#define RAININT A4    //rainfall interrupt pin A4
 
 //Pin 11-rx ; 10-tx (GSM comms)
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -61,8 +75,8 @@ int tx_RSSI = 0;      //tx rssi
 static unsigned long last_interrupt_time = 0;
 const unsigned int DEBOUNCE_TIME = 40; //40
 // volatile uint8_t rainTips = 0;         //store rain tips
-float rainTips = 0.00;
-char sendRainTip[5] = "0.00";
+volatile float rainTips = 0.00;
+char sendRainTip[7] = "0.00";
 
 volatile bool rainFallFlag = false;  //rain tips
 volatile bool OperationFlag = false; //rtc interrupt handler
@@ -117,9 +131,9 @@ void setup()
   digitalWrite(DUETRIG, LOW);
 
   //rain gauge interrupt
-  attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
+  attachInterrupt(RAININT, rainISR, FALLING);
 
-  attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
+  attachInterrupt(RTCINTPIN, wake, FALLING);
   init_Sleep(); //initialize sleep State working!!!!
 
   setAlarmEvery30(alarmFromFlashMem()); //alarm settings
@@ -310,11 +324,12 @@ void wake()
 {
   OperationFlag = true;
   //detach the interrupt in the ISR so that multiple ISRs are not called
-  detachInterrupt(digitalPinToInterrupt(RTCINTPIN));
+  detachInterrupt(RTCINTPIN);
 }
 
 void build_message()
 {
+  dtostrf(rainTips, 3, 2, sendRainTip); //comnvert rainTip to char
   getPwrdFromMemory();
   readTimeStamp();
   for (int i = 0; i < DATALEN; i++)
@@ -330,6 +345,7 @@ void build_message()
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
   strncat(dataToSend, "<<", 2);
   delay(10);
+  Serial.println(dataToSend);
 }
 
 void flashLed(int pin, int times, int wait)
@@ -512,22 +528,22 @@ void turn_OFF_due()
 void rainISR()
 {
   rainFallFlag = true;
-  //detachInterrupt
   detachInterrupt(digitalPinToInterrupt(RAININT));
-  /*
-  flashLed(LED_BUILTIN, 2, 100);
+
   unsigned long interrupt_time = millis();
   if (interrupt_time - last_interrupt_time > DEBOUNCE_TIME)
   {
-    rainTips++;
+    rainTips += 0.5;
   }
   last_interrupt_time = interrupt_time;
-  */
+
+  // attachInterrupt(RAININT, rainISR, FALLING);  
 }
 
 void resetRainTips()
 {
   rainTips = 0.00;
+  delay(75);
   dtostrf(rainTips, 3, 2, sendRainTip); //convert rainTip to char
   Serial.print("Rain tips: ");
   Serial.println(rainTips);
@@ -538,64 +554,58 @@ void readRainTips()
   if (OperationFlag)
   {
     wakeGSM();
-    flashLed(LED_BUILTIN, 5, 100);
+    flashLed(LED_BUILTIN, 3, 100);
 
-    build_message();
-    delay(10);
-    sendMessage(dataToSend, serverNumber);
-    delay(50);
-
+    send_rain_tips();
     resetRainTips();
 
     get_Due_Data(); //get data from sensors
 
     //real time clock alarm settings
-    setAlarmEvery30(alarmFromFlashMem());
-    delay(75);
-    rtc.clearINTStatus(); // needed to re-trigger rtc
+    // setAlarmEvery30(alarmFromFlashMem());
+    // delay(75);
+    // rtc.clearINTStatus(); // needed to re-trigger rtc
 
     rf95.sleep(); //sleep LoRa
     sleepGSM();
     
     delay(75);
-    attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
+    attachInterrupt(RTCINTPIN, wake, FALLING);
     delay(100);
     OperationFlag = false;
   }
 
   if (rainFallFlag)
   {
-    /*
-    if (millis() - rainStart > 100000)  //260000 = ~5 minutes
-    {
-      rainStart = millis();
-      Serial.println("Rain timeout.");
-      rainFallFlag = false;
-    }
-    */
+    flashLed(LED_BUILTIN, 2, 80);
+    
+    // unsigned long interrupt_time = millis();
+    // if (interrupt_time - last_interrupt_time > DEBOUNCE_TIME)
+    // {
+    //   rainTips += 0.5;
+    // }
+    // last_interrupt_time = interrupt_time;
 
-    // wakeGSM();
-    flashLed(LED_BUILTIN, 2, 100);
-    unsigned long interrupt_time = millis();
-    if (interrupt_time - last_interrupt_time > DEBOUNCE_TIME)
-    {
-      // rainTips++;
-      rainTips += 0.5;
-    }
-    last_interrupt_time = interrupt_time;
-    dtostrf(rainTips, 3, 2, sendRainTip); //comnvert rainTip to char
-
-    build_message();
-    // delay(50);
-    // sendMessage(dataToSend, serverNumber);
-    // delay(50);
-
-    attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING); //re-enable rain gauge interrupt before going to sleep
+    // send_rain_tips();
+    
+    attachInterrupt(RAININT, rainISR, FALLING); //re-enable rain gauge interrupt before going to sleep
     rainFallFlag = false;
   }
 
-  attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(RTCINTPIN), wake, FALLING);
-  // sleepGSM();
+  //real time clock alarm settings
+  setAlarmEvery30(alarmFromFlashMem());
+  delay(75);
+  rtc.clearINTStatus(); // needed to re-trigger rtc
+
+  attachInterrupt(RAININT, rainISR, FALLING);
+  attachInterrupt(RTCINTPIN, wake, FALLING);
   sleepNow();
+}
+
+void send_rain_tips()
+{
+  build_message();
+  delay(50);
+  sendMessage(dataToSend, serverNumber);
+  delay(50);
 }

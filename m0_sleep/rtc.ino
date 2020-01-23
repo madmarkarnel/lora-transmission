@@ -65,7 +65,11 @@ void getAtcommand()
     else if (alarmFromFlashMem() == 3)
     {
       Serial.println("Alarm every 15 and 45 minutes.");
-    } 
+    }
+    else if (alarmFromFlashMem() == 4)
+    {
+      Serial.println("Alarm every 10 minutes.");
+    }
   }
   else if (command == "C")
   {
@@ -93,20 +97,24 @@ void getAtcommand()
   else if (command == "O")
   {
     getCSQ();
-  }  
+  }
   else if (command == "P")
   {
     Serial.print("Rain tips: ");
     Serial.println(rainTips);
     delay(20);
     // resetRainTips();
-    //re-enable rain gauge interrupt before going to sleep
-    attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING); 
+    attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
   }
   else if (command == "Q")
   {
     resetRainTips();
-  }  
+  }
+  else if (command == "U")
+  {
+    Serial.println("sending rain gauge data . . .");
+    send_rain_tips();
+  }
   else if (command == "V")
   {
     sleepGSM();
@@ -142,6 +150,7 @@ void getAtcommand()
   {
     Serial.println("Command invalid!");
   }
+
 }
 
 void printMenu()
@@ -158,6 +167,7 @@ void printMenu()
   Serial.println(F("[Q] Reset rain tips."));
   Serial.println(F("[R] Read Timestamp."));
   Serial.println(F("[S] Set date and time."));
+  Serial.println(F("[U] Send rain tips."));
   Serial.println(F("[V] Sleep GSM"));
   Serial.println(F("[W] Wake GSM"));
   Serial.println(F("[Y] Print SENSLOPE command."));
@@ -175,6 +185,7 @@ void print_rtcInterval()
   Serial.println("[1] Alarm for every 5 and 35 minutes interval");
   Serial.println("[2] Alarm for every 10 and 40 minutes interval");
   Serial.println("[3] Alarm for every 15 and 45 minutes interval");
+  Serial.println("[4] Alarm for every 10 minutes interval");
   Serial.println("------------------------------------------------");
 }
 
@@ -314,7 +325,7 @@ void readTimeStamp()
 
   ts.remove(0, 2); //remove 1st 2 data in ts
   ts.toCharArray(Ctimestamp, 13);
-/*
+  /*
   if (DEBUG == 1)
   {
     Serial.print("Timestamp: ");
@@ -423,6 +434,36 @@ void setAlarmEvery30(int alarmSET)
     else if ((now.minute() >= 45) && (now.minute() <= 59))
     {
       store_rtc = 15;
+    }
+    enable_rtc_interrupt();
+    break;
+  }
+  case 4:
+  {
+    //set every 10 minutes interval
+    if ((now.minute() >= 0) && (now.minute() <= 9))
+    {
+      store_rtc = 10;
+    }
+    else if ((now.minute() >= 10) && (now.minute() <= 19))
+    {
+      store_rtc = 20;
+    }
+    else if ((now.minute() >= 20) && (now.minute() <= 29))
+    {
+      store_rtc = 30;
+    }
+    else if ((now.minute() >= 30) && (now.minute() <= 39))
+    {
+      store_rtc = 40;
+    }
+    else if ((now.minute() >= 40) && (now.minute() <= 49))
+    {
+      store_rtc = 50;
+    }
+    else if ((now.minute() >= 50) && (now.minute() <= 59))
+    {
+      store_rtc = 0;
     }
     enable_rtc_interrupt();
     break;
