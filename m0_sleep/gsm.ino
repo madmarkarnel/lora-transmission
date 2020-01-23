@@ -64,7 +64,7 @@ void getCSQ()
     char result = ms.Match("[0-9]+");
     if (result == REGEXP_MATCHED)
     {
-    Serial.print ("CSQ: ");
+    Serial.print ("CSQ = ");
     Serial.println (ms.GetMatch(csqval));
     }
     else
