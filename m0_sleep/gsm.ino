@@ -56,18 +56,19 @@ void getCSQ()
 {
     GSMSerial.write("AT+CSQ\r");
     delay(100);
-    String csq = GSMSerial.readString();
-    Serial.println(csq);
-    /*
-    int k=0;
-    while(GSMSerial.available()!=0)
-    {    
-        SigQ[k]=GSMSerial.read();  
-        Serial.write(SigQ[k]);
-        k+=1;
+    String csqstr = GSMSerial.readString();
+    char csq[100];
+    char csqval[20];
+    csqstr.toCharArray(csq,100);
+    MatchState ms(csq);
+    char result = ms.Match("[0-9]+");
+    if (result == REGEXP_MATCHED)
+    {
+    Serial.print ("CSQ: ");
+    Serial.println (ms.GetMatch(csqval));
     }
-    */
-
+    else
+    Serial.println(csq);
 }
 
 void updateSerial()

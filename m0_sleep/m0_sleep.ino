@@ -23,6 +23,7 @@ Modified: 23 January 2020
 #include <FlashStorage.h>
 #include <Arduino.h>        // required before wiring_private.h
 #include "wiring_private.h" // pinPeripheral() function
+#include <Regexp.h>
 
 //gsm related
 #define GSMBAUDRATE 9600
