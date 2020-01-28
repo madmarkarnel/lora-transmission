@@ -46,7 +46,7 @@ void getAtcommand()
   }
   else if (command == "A")
   {
-    get_Due_Data();
+    get_Due_Data(1);
   }
   else if (command == "B")
   {
@@ -96,7 +96,9 @@ void getAtcommand()
   }
   else if (command == "O")
   {
-    getCSQ();
+    Serial.print("CSQ: ");
+    Serial.println(getCSQ());
+    // getCSQ();
   }
   else if (command == "P")
   {
@@ -131,8 +133,14 @@ void getAtcommand()
   }
   else if (command == "F")
   {
-    //do something
+    build_message();
   }
+  else if (command == "G")
+  {
+    //print voltage
+    Serial.print("Voltage: ");
+    Serial.println(BatteryVoltage());
+  }  
   else if (command == "Y")
   {
     Serial.print("Current command: ");
@@ -162,6 +170,8 @@ void printMenu()
   Serial.println(F("[C] Change LoRa sending time."));
   Serial.println(F("[D] Read RTC temperature."));
   Serial.println(F("[E] Exit Debug mode."));
+  Serial.println(F("[F] Print data to send. (rain)"));
+  Serial.println(F("[G] Print input voltage"));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));
@@ -235,7 +245,7 @@ void changeSensCommand()
 void setupTime()
 {
   int MM = 0, DD = 0, YY = 0, hh = 0, mm = 0, ss = 0, dd = 0;
-  Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));
+  //Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));
   delay(50);
 
   while (!Serial.available())
@@ -254,6 +264,7 @@ void setupTime()
   delay(10);
   adjustDate(YY, MM, DD, hh, mm, ss, dd);
   readTimeStamp();
+  Serial.println(Ctimestamp);
 }
 
 void adjustDate(int year, int month, int date, int hour, int min, int sec, int weekday)

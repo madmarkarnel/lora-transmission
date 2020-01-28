@@ -1,11 +1,13 @@
-/*
-Arabica Datalogger
+/**
+ * Arabica datalogger
 
-- Sends sensor data via LoRa for version 4 datalogger.
-- Built-in rtc with configurable wake interrupt.
-- Low power mode ~1mA
+Features:
+* Sends sensor data via LoRa for version 4 datalogger.
+* Built-in rtc with configurable wake interrupt.
+* Low power mode ~1mA
 
 The circuit:
+* Adafruit Feather M0 with RFM95 433MHz
 * Arabica Board with rtc
 
 Created: 12 October 2019
@@ -24,6 +26,7 @@ Modified: 23 January 2020
 #include <Arduino.h>        // required before wiring_private.h
 #include "wiring_private.h" // pinPeripheral() function
 #include <Regexp.h>
+#include <string.h>
 
 //gsm related
 #define GSMBAUDRATE 9600
@@ -93,8 +96,14 @@ uint8_t debug_flag = 0;
 
 uint16_t store_rtc = 00; //store rtc alarm
 
-//gsm
-unsigned char SigQ[50];
+/**
+ * gsm related variables
+*/
+char gsmReply[60];
+
+// how much serial data we expect before a newline
+//non blocking read function
+const unsigned int MAX_INPUT = 50;
 
 typedef struct
 {
@@ -104,8 +113,10 @@ typedef struct
   char stationName[10];
 } Senslope;
 
-// Reserve a portion of flash memory to store an "int" variable
-// and call it "alarmStorage".
+/**
+ * Reserve a portion of flash memory to store an "int" variable
+ * and call it "alarmStorage".
+*/
 FlashStorage(alarmStorage, int);
 FlashStorage(passCommand, Senslope);
 Senslope sensCommand;
@@ -144,7 +155,7 @@ void setup()
   delay(10);
   GSMSerial.write("ATE0\r"); //turn off echo
   delay(10);
-  sendMessage("GSM is Alive!", serverNumber);
+  send_thru_gsm("GSM is Alive!", serverNumber);
 
   Serial.println("Press '?' to go DEBUG mode!");
 
@@ -173,14 +184,10 @@ void loop()
 {
   while (debug_flag == 1)
   {
-    // wakeGSM();
     getAtcommand();
-    // readRainTips();
-    // OperationFlag = false;
-    // rainFallFlag = false;
   }
-  readRainTips();
-  // wakeAndSleep();
+  gateway_mode
+();
 }
 
 void wakeAndSleep()
@@ -191,11 +198,11 @@ void wakeAndSleep()
 
     build_message();
     delay(10);
-    sendMessage(dataToSend, serverNumber);
+    send_thru_gsm(dataToSend, serverNumber);
     delay(10);
     resetRainTips();
 
-    get_Due_Data(); //get data from sensors
+    get_Due_Data(0); //get data from sensors
 
     //real time clock alarm settings
     setAlarmEvery30(alarmFromFlashMem());
@@ -252,11 +259,12 @@ void init_lora()
   }
   Serial.print("Set Freq to: ");
   Serial.println(RF95_FREQ);
-
-  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
-  // The default transmitter power is 13dBm, using PA_BOOST.
-  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
-  // you can set transmitter powers from 5 to 23 dBm:
+  /**
+   *  Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+   * The default transmitter power is 13dBm, using PA_BOOST.
+   * If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
+   * you can set transmitter powers from 5 to 23 dBm:
+  */
   rf95.setTxPower(23, false);
 }
 
@@ -291,7 +299,7 @@ void receive_lora_data()
       // digitalWrite(LED, HIGH);
 
       int i = 0;
-      for (i = 0; i < len; ++i)
+      for (int i = 0; i < len; ++i)
       {
         streamBuffer[i] = (uint8_t)payload[i];
       }
@@ -330,21 +338,30 @@ void wake()
 
 void build_message()
 {
-  dtostrf(rainTips, 3, 2, sendRainTip); //comnvert rainTip to char
+  char csq[5];
+  char temp[6];
+  char volt[6];
+  getCSQ().toCharArray(csq, 5);
+  dtostrf((readTemp()), 5, 2, temp);
+  dtostrf(rainTips, 3, 2, sendRainTip); //convert rainTip to char
+  dtostrf((BatteryVoltage()), 4, 2, volt);
   getPwrdFromMemory();
   readTimeStamp();
+
   for (int i = 0; i < DATALEN; i++)
     dataToSend[i] = 0;
-  strncpy(dataToSend, ">>", 2);
-  // strncat(dataToSend, "VOLTAGE#", 1);
-  strncat((dataToSend), (sensCommand.stationName), (10));
-  // strncat(dataToSend, "*VOLT:", 7);
-  // strncat(dataToSend, featherVoltage, sizeof(featherVoltage));
-  strncat(dataToSend, "*RAIN:", 6);
+  strncpy((dataToSend), (sensCommand.stationName), (10));
+  strncat(dataToSend, "W", 1);
+  strncat(dataToSend, ",", 1);
+  strncat(dataToSend, temp, sizeof(temp));
+  strncat(dataToSend, ",", 1);
   strncat(dataToSend, sendRainTip, sizeof(sendRainTip));
-  strncat(dataToSend, "*", 1);
+  strncat(dataToSend, ",", 1);
+  strncat(dataToSend, volt, sizeof(volt));
+  strncat(dataToSend, ",", 1);
+  strncat(dataToSend, csq, sizeof(csq));
+  strncat(dataToSend, ",", 1);
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
-  strncat(dataToSend, "<<", 2);
   delay(10);
   Serial.println(dataToSend);
 }
@@ -364,22 +381,14 @@ void flashLed(int pin, int times, int wait)
 }
 
 // Measure battery voltage using divider on Feather M0
-void BatteryVoltage()
+float BatteryVoltage()
 {
   float measuredvbat;
   measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
   measuredvbat *= 2;                  // we divided by 2, so multiply back
   measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
   measuredvbat /= 1024;               // convert to voltage
-  // return measuredvbat;
-  if (DEBUG == 1)
-  {
-    Serial.print("BatteryVoltage: ");
-  }
-  if (DEBUG == 1)
-  {
-    Serial.println(measuredvbat);
-  }
+  return measuredvbat;
 }
 
 /*
@@ -420,13 +429,16 @@ void getPwrdFromMemory()
   sensCommand = passCommand.read();
 }
 
-void get_Due_Data()
+/**
+ * Get custom due sensor data.
+ * ~5 minutes timeout if no data read.  
+ * mode in sending data: 1-gsm ; 0 - LoRa(defualt)
+*/
+void get_Due_Data(uint8_t mode)
 {
   unsigned long start = millis();
-
   turn_ON_due();
   delay(500);
-
   readTimeStamp();
 
   sensCommand = passCommand.read();
@@ -436,10 +448,6 @@ void get_Due_Data()
   strncat(command, Ctimestamp, sizeof(Ctimestamp));
   Serial.println(command);
   DUESerial.write(command);
-
-  //original command
-  // sensCommand = passCommand.read();
-  // DUESerial.write(sensCommand.senslopeCommand);
   delay(100);
 
   while (customDueFlag == 0)
@@ -453,7 +461,7 @@ void get_Due_Data()
     if ((millis() - start) > LORATIMEOUT)
     {
       start = millis();
-      no_data_from_senslope();
+      no_data_from_senslope(1);
       customDueFlag = 1;
     }
 
@@ -461,15 +469,32 @@ void get_Due_Data()
     {
       if (strstr(streamBuffer, "*"))
       {
-        Serial.println("Getting DUE data. . .");
-
+        Serial.println("Getting sensor data. . .");
         // removed
         // strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
-        strncat(streamBuffer, "<<", 2);
+        // strncat(streamBuffer, "<<", 2);
 
-        // send_thru_lora(streamBuffer);            //send to LoRa
         Serial.println(streamBuffer);
-        sendMessage(streamBuffer, serverNumber); //send to GSM
+        if(mode == 1)
+        {
+          /**
+            * Remove 1st and 2nd character data in string
+            * Not needed in GSM mode 
+          */
+          for (byte i = 0; i < strlen(streamBuffer); i++)
+          {
+            streamBuffer[i] = streamBuffer [i+2];
+          }
+          Serial.println(streamBuffer);
+          send_thru_gsm(streamBuffer, serverNumber); //send to GSM
+        }
+        else
+        {
+          strncat(streamBuffer, "<<", 2);
+          delay(10);
+          send_thru_lora(streamBuffer);
+        }
+        send_thru_gsm(streamBuffer, serverNumber); //send to GSM
         flashLed(LED_BUILTIN, 2, 100);
         DUESerial.write("OK");
       }
@@ -483,7 +508,6 @@ void get_Due_Data()
     else if (strstr(streamBuffer, "STOPLORA"))
     {
       Serial.println("Done getting DUE data!");
-      // turn_OFF_due();
       streamBuffer[0] = '\0';
       flashLed(LED_BUILTIN, 4, 90);
       customDueFlag = 1;
@@ -493,22 +517,42 @@ void get_Due_Data()
   customDueFlag = 0;
 }
 
-void no_data_from_senslope()
+/**
+ * Sends no data from senslope if no data available
+ * mode :     1 - gsm
+ * default:   0 - LoRa
+*/
+void no_data_from_senslope(uint8_t mode)
 {
   readTimeStamp();
   sensCommand = passCommand.read(); //read from flash memory
-
   Serial.println("No data from senslope");
   streamBuffer[0] = '\0';
-  strncpy(streamBuffer, ">>", 2);
-  strncat((streamBuffer), (sensCommand.stationName), (10));
+
+  if(mode == 1)
+  {
+    strncpy((streamBuffer), (sensCommand.stationName), (10));
+  }
+  else
+  {
+    strncpy(streamBuffer, ">>", 2);
+    strncat((streamBuffer), (sensCommand.stationName), (10));
+  }
   strncat(streamBuffer, "*NODATAFROMSENSLOPE*", 22);
   strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
-  strncat(streamBuffer, "<<", 2);
-  delay(50);
-  // send_thru_lora(streamBuffer);
-  sendMessage(streamBuffer, serverNumber); //send to GSM
-  delay(50);
+  delay(10);
+
+  if(mode == 1)
+  {
+    send_thru_gsm(streamBuffer, serverNumber);
+  }
+  else
+  {
+    strncat(streamBuffer, "<<", 2);
+    delay(10);
+    send_thru_lora(streamBuffer);
+  }
+  Serial.println(streamBuffer);
   customDueFlag = 1;
 }
 
@@ -550,7 +594,12 @@ void resetRainTips()
   Serial.println(rainTips);
 }
 
-void readRainTips()
+/**
+ * main code
+ * rain gauge
+ * sensor
+*/
+void gateway_mode()
 {
   if (OperationFlag)
   {
@@ -559,36 +608,20 @@ void readRainTips()
 
     send_rain_tips();
     resetRainTips();
-
-    get_Due_Data(); //get data from sensors
-
-    //real time clock alarm settings
-    // setAlarmEvery30(alarmFromFlashMem());
-    // delay(75);
-    // rtc.clearINTStatus(); // needed to re-trigger rtc
+    
+    get_Due_Data(1); //get data from sensors
 
     rf95.sleep(); //sleep LoRa
     sleepGSM();
     
     delay(75);
     attachInterrupt(RTCINTPIN, wake, FALLING);
-    delay(100);
     OperationFlag = false;
   }
 
   if (rainFallFlag)
   {
     flashLed(LED_BUILTIN, 2, 80);
-    
-    // unsigned long interrupt_time = millis();
-    // if (interrupt_time - last_interrupt_time > DEBOUNCE_TIME)
-    // {
-    //   rainTips += 0.5;
-    // }
-    // last_interrupt_time = interrupt_time;
-
-    // send_rain_tips();
-    
     attachInterrupt(RAININT, rainISR, FALLING); //re-enable rain gauge interrupt before going to sleep
     rainFallFlag = false;
   }
@@ -606,7 +639,7 @@ void readRainTips()
 void send_rain_tips()
 {
   build_message();
-  delay(50);
-  sendMessage(dataToSend, serverNumber);
+  delay(100);
+  send_thru_gsm(dataToSend, serverNumber);
   delay(50);
 }
