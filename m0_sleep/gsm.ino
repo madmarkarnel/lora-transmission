@@ -63,9 +63,23 @@ String getCSQ()
     delay(100);
     String csqstr = GSMSerial.readString();
     csqstr.toCharArray(csq, 100);
+    //Serial.println(csq);
     MatchState ms(csq);
+    MatchState ok_ms(csq);
+    MatchState error_ms(csq);
     char result = ms.Match("[0-9]+");
+    char ok_result = ok_ms.Match("OK");
+    char error_result = error_ms.Match("ERROR");
 
+    if (ok_result == REGEXP_MATCHED)
+    {
+       Serial.println("OK received");
+    }
+    if (error_result == REGEXP_MATCHED)
+    {
+       Serial.println("ERROR received");
+    }
+    
     if (result == REGEXP_MATCHED)
     {
         // Serial.print ("CSQ: ");
