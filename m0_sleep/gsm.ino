@@ -67,7 +67,7 @@ String getCSQ()
     MatchState ms(csq);
     MatchState ok_ms(csq);
     MatchState error_ms(csq);
-    char result = ms.Match("[0-9]+");
+    char result = ms.Match("CSQ: [0-9]+");
     char ok_result = ok_ms.Match("OK");
     char error_result = error_ms.Match("ERROR");
 
@@ -84,7 +84,9 @@ String getCSQ()
     {
         // Serial.print ("CSQ: ");
         // Serial.println (ms.GetMatch(csqval));
-        return (ms.GetMatch(csqval));
+        MatchState csq_ms(ms.GetMatch(csqval));
+        char csq_result = csq_ms.Match("[0-9]+");
+        return (csq_ms.GetMatch(csqval));
     }
     else
     {
