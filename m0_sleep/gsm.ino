@@ -1,11 +1,3 @@
-/*
-if (readline(Serial.read(), buf, 80) > 0) {
-    Serial.print("You entered: >");
-    Serial.print(buf);
-    Serial.println("<");
-}
-*/
-
 void send_thru_gsm(char *inputMessage, char *serverNumber)
 {
     char msgToSend[250];
@@ -44,12 +36,12 @@ void send_thru_gsm(char *inputMessage, char *serverNumber)
     String rawMsg = smsCMD + quote + serverNumber + quote + CR;
     rawMsg.toCharArray(msgToSend, 250);
     strncat(msgToSend, inputMessage, 168);
+    Serial.println(inputMessage);  //print to send data
 
     GSMSerial.write(msgToSend);
     delay(500);
 
     GSMSerial.write(26); //ctrl Z
-    // updateSerial();
 }
 
 
@@ -131,14 +123,13 @@ void sleepGSM()
 
 void wakeGSM()
 {
-    delay(1000);
+    // delay(1000);
     GSMSerial.write("AT\r");
     delay(50);
     //disable sleep mode
     GSMSerial.write("AT+CSCLK=0\r");
     delay(500);
-    // updateSerial();
-    Serial.write("GSM is alive!");
+    Serial.println("GSM is alive!");
 }
 
 // here to process incoming serial data after a terminator received
@@ -154,7 +145,7 @@ void process_data(const char *data)
 
     /**
      * from :+CSQ: 31,0
-     * to : +CSQ:\031,0
+     * to : +CSQ:'\0'31,0
     */
     char *parseReply = strtok(buff, " ");
     while (parseReply)

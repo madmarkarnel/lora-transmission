@@ -37,7 +37,7 @@ Modified: 23 January 2020
 #define DUEBAUD 9600
 #define DUESerial Serial1
 #define RTCINTPIN 6
-#define DUETRIG 9     //default is pin 10 ; changed from pin 10 to pin 9
+#define DUETRIG 9 //default is pin 10 ; changed from pin 10 to pin 9
 #define DEBUG 1
 #define VBATPIN A7
 
@@ -47,9 +47,9 @@ Modified: 23 January 2020
 #define RFM95_INT 3
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 433.0
-#define DATALEN 200        //max size of dummy length
+#define DATALEN 200       //max size of dummy length
 #define LORATIMEOUT 60000 //260 000 ~4 minutes 20 seconds timeout
-#define RAININT A4    //rainfall interrupt pin A4
+#define RAININT A4        //rainfall interrupt pin A4
 
 //Pin 11-rx ; 10-tx (GSM comms)
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -70,10 +70,16 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 char dataToSend[DATALEN]; //lora
 uint8_t payload[RH_RF95_MAX_MESSAGE_LEN];
 uint8_t len = sizeof(payload);
-char streamBuffer[250];     //store message
-int customDueFlag = 0;      //for data gathering
+
+//LoRa received
+uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+uint8_t len2 = sizeof(buf);
+char received[250];
+
+char streamBuffer[250]; //store message
+int customDueFlag = 0;  //for data gathering
 int sendToLoRa = 0;
-int tx_RSSI = 0;      //tx rssi
+int tx_RSSI = 0; //tx rssi
 
 //rain gauge reading
 static unsigned long last_interrupt_time = 0;
@@ -93,6 +99,7 @@ unsigned long timestart = 0;
 // unsigned long timenow = 0;
 uint8_t serial_flag = 0;
 uint8_t debug_flag = 0;
+uint8_t rcv_LoRa_flag = 0;
 
 uint16_t store_rtc = 00; //store rtc alarm
 
@@ -151,6 +158,7 @@ void setup()
   setAlarmEvery30(alarmFromFlashMem()); //alarm settings
   rf95.sleep();
 
+  
   GSMSerial.write("AT\r");
   delay(10);
   GSMSerial.write("ATE0\r"); //turn off echo
@@ -176,7 +184,8 @@ void setup()
       serial_flag = 1;
     }
   }
-  sleepGSM();
+  // sleepGSM();
+  
   flashLed(LED_BUILTIN, 5, 100);
 }
 
@@ -186,8 +195,10 @@ void loop()
   {
     getAtcommand();
   }
-  gateway_mode
-();
+  gateway_mode();
+  
+  // receive_lora_data(1);
+  // get_Due_Data(0);
 }
 
 void wakeAndSleep()
@@ -288,32 +299,59 @@ void send_thru_lora(char *radiopacket)
   delay(100);
 }
 
-void receive_lora_data()
+void receive_lora_data(uint8_t mode)
 {
-  if (rf95.available())
+  unsigned long start = millis();
+  while (rcv_LoRa_flag == 0)
   {
-    // Should be a message for us now
-
-    if (rf95.recv(payload, &len))
+    if (rf95.available())
     {
-      // digitalWrite(LED, HIGH);
-
-      int i = 0;
-      for (int i = 0; i < len; ++i)
+      // Should be a message for us now
+      if (rf95.recv(buf, &len2))
       {
-        streamBuffer[i] = (uint8_t)payload[i];
-      }
-      //received from tx
-      streamBuffer[i] = (uint8_t)'\0';
-      Serial.println(streamBuffer);
+        int i = 0;
+        for (i = 0; i < len2; ++i)
+        {
+          received[i] = (uint8_t)buf[i];
+        }
+        //received from tx
+        received[i] = (uint8_t)'\0';
+        // Serial.println(received);
+        if (strstr(received, ">>"))
+        {
+          if (mode == 1)
+          {
+            Serial.println("Sending data to gsm.");
+            for (byte i = 0; i < strlen(received); i++)
+            {
+              received[i] = received[i + 2];
+            }
+            send_thru_gsm(received, serverNumber);
+          }
+          else
+          {
+            Serial.println("recived >>");
+            Serial.println(received);
+          }
+        }
+        else if (received, "LORASTOP")
+        {
+          received[0] = '\0';
+          Serial.println("Done getting LoRa data from transmitter.");
+          rcv_LoRa_flag = 1;
+        }
+        else
+        {
+          Serial.println("Error received data.");
+        }
 
-      //print RSSI values
-      tx_RSSI = (rf95.lastRssi(), DEC);
-      Serial.print("RSSI: ");
-      Serial.println(tx_RSSI);
-      // checkRSSI(tx_RSSI);
+        //print RSSI values
+        tx_RSSI = (rf95.lastRssi(), DEC);
+        Serial.print("RSSI: ");
+        Serial.println(tx_RSSI);
+        // checkRSSI(tx_RSSI);
 
-      /*
+        /*
       // Send a reply
       uint8_t data[] = "mad back to you";
       rf95.send(data, sizeof(data));
@@ -321,12 +359,21 @@ void receive_lora_data()
       Serial.println("Sent a reply");
       digitalWrite(LED, LOW);
       */
+      }
+      else
+      {
+        Serial.println("Receive failed");
+      }
     }
-    else
-    {
-      Serial.println("Receive failed");
-    }
+  }    
+  // timeOut in case walang makuhang data LoRa transmitter ~4 minutes
+  if ((millis() - start) > 260000)
+  {
+    start = millis();
+    no_data_from_senslope(1);
+    rcv_LoRa_flag = 1;
   }
+  rcv_LoRa_flag = 0;
 }
 
 void wake()
@@ -436,6 +483,7 @@ void getPwrdFromMemory()
 */
 void get_Due_Data(uint8_t mode)
 {
+  delay(2000);
   unsigned long start = millis();
   turn_ON_due();
   delay(500);
@@ -475,7 +523,7 @@ void get_Due_Data(uint8_t mode)
         // strncat(streamBuffer, "<<", 2);
 
         Serial.println(streamBuffer);
-        if(mode == 1)
+        if (mode == 1)
         {
           /**
             * Remove 1st and 2nd character data in string
@@ -483,20 +531,21 @@ void get_Due_Data(uint8_t mode)
           */
           for (byte i = 0; i < strlen(streamBuffer); i++)
           {
-            streamBuffer[i] = streamBuffer [i+2];
+            streamBuffer[i] = streamBuffer[i + 2];
           }
           Serial.println(streamBuffer);
           send_thru_gsm(streamBuffer, serverNumber); //send to GSM
+          flashLed(LED_BUILTIN, 2, 100);
+          DUESerial.write("OK");
         }
         else
         {
           strncat(streamBuffer, "<<", 2);
           delay(10);
           send_thru_lora(streamBuffer);
+          flashLed(LED_BUILTIN, 2, 100);
+          DUESerial.write("OK");        
         }
-        send_thru_gsm(streamBuffer, serverNumber); //send to GSM
-        flashLed(LED_BUILTIN, 2, 100);
-        DUESerial.write("OK");
       }
       else
       {
@@ -507,6 +556,8 @@ void get_Due_Data(uint8_t mode)
     }
     else if (strstr(streamBuffer, "STOPLORA"))
     {
+      send_thru_lora("STOPLORA");
+      Serial.println(">>STOPLORA");
       Serial.println("Done getting DUE data!");
       streamBuffer[0] = '\0';
       flashLed(LED_BUILTIN, 4, 90);
@@ -529,7 +580,7 @@ void no_data_from_senslope(uint8_t mode)
   Serial.println("No data from senslope");
   streamBuffer[0] = '\0';
 
-  if(mode == 1)
+  if (mode == 1)
   {
     strncpy((streamBuffer), (sensCommand.stationName), (10));
   }
@@ -542,7 +593,7 @@ void no_data_from_senslope(uint8_t mode)
   strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
   delay(10);
 
-  if(mode == 1)
+  if (mode == 1)
   {
     send_thru_gsm(streamBuffer, serverNumber);
   }
@@ -572,17 +623,21 @@ void turn_OFF_due()
 
 void rainISR()
 {
-  rainFallFlag = true;
   detachInterrupt(digitalPinToInterrupt(RAININT));
-
   unsigned long interrupt_time = millis();
   if (interrupt_time - last_interrupt_time > DEBOUNCE_TIME)
   {
     rainTips += 0.5;
   }
   last_interrupt_time = interrupt_time;
-
-  // attachInterrupt(RAININT, rainISR, FALLING);  
+  if (OperationFlag == true || debug_flag == 1)
+  {
+    attachInterrupt(RAININT, rainISR, FALLING);
+  }
+  else
+  {
+    rainFallFlag = true;
+  }
 }
 
 void resetRainTips()
@@ -603,17 +658,19 @@ void gateway_mode()
 {
   if (OperationFlag)
   {
-    wakeGSM();
-    flashLed(LED_BUILTIN, 3, 100);
+    // wakeGSM();
+    flashLed(LED_BUILTIN, 2, 50);
+    receive_lora_data(1);
+
+    // delay(300);
+    // get_Due_Data(1); //get data from sensors
 
     send_rain_tips();
     resetRainTips();
-    
-    get_Due_Data(1); //get data from sensors
 
     rf95.sleep(); //sleep LoRa
-    sleepGSM();
-    
+    // sleepGSM();
+
     delay(75);
     attachInterrupt(RTCINTPIN, wake, FALLING);
     OperationFlag = false;
@@ -621,7 +678,7 @@ void gateway_mode()
 
   if (rainFallFlag)
   {
-    flashLed(LED_BUILTIN, 2, 80);
+    flashLed(LED_BUILTIN, 1, 50);
     attachInterrupt(RAININT, rainISR, FALLING); //re-enable rain gauge interrupt before going to sleep
     rainFallFlag = false;
   }

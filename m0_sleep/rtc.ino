@@ -106,7 +106,7 @@ void getAtcommand()
     Serial.println(rainTips);
     delay(20);
     // resetRainTips();
-    attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
+    // attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
   }
   else if (command == "Q")
   {
@@ -130,6 +130,10 @@ void getAtcommand()
     sleepGSM();
     debug_flag = 0;
     Serial.println("Exiting debug mode!");
+    //real time clock alarm settings
+    setAlarmEvery30(alarmFromFlashMem());
+    delay(75);
+    rtc.clearINTStatus(); // needed to re-trigger rtc
   }
   else if (command == "F")
   {
