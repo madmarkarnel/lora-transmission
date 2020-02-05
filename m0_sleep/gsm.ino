@@ -44,33 +44,121 @@ void send_thru_gsm(char *inputMessage, char *serverNumber)
     GSMSerial.write(26); //ctrl Z
 }
 
-
 String getCSQ()
+{
+  String csqResponse;
+  String atReply;
+  String csqval;
+  int counter = 0;
+  
+  do
+  {
+    atReply = gsmCommand("AT\r");
+    //Serial.println("AT");
+  }
+  while ((checkOkError(atReply) < 0) && (counter++ < 10));
+  
+  csqResponse = gsmCommand("AT+CSQ\r");
+  if (checkOkError(csqResponse) == 0)
+  {
+    //Serial.println(csqResponse);
+    csqval = csqResponse.substring(csqResponse.indexOf("+CSQ: ")+6, csqResponse.indexOf(","));
+  }
+  else
+  {
+    csqval = '99';
+  }
+  return csqval;  
+}
+
+void gsmHangup()
+{
+  //when ring pin triggers, call this function
+  delay(2000);
+  gsmCommand("ATH\r");
+}
+
+void gsmDeleteReadSmsInbox()
+{
+  gsmCommand("AT+CMGD=1,2");
+}
+
+void gsmManualNetworkConnect()
+{
+  String simNetwork = "GLOBE"; //or "SMART" , hardcoded
+  String simNetCommand = "AT+COPS=1,1,\"" + simNetwork + "\"\r";
+  char command[25];
+  simNetCommand.toCharArray(command, 25);
+  gsmCommand(command);
+}
+
+int checkOkError(String response)
+{
+  if (isResponse(response,"OK"))
+  {
+    //Serial.println("OK received!");
+    return 0;
+  }
+  else if (isResponse(response, "ERROR"))
+  {
+    Serial.println("ERROR received!");
+    return -1;
+  }
+  else
+  {
+    return -2;
+  }
+}
+
+bool isResponse(String response, String keyword)
+{
+  if (response.indexOf(keyword) != -1)
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+String gsmCommand(char *command)
+{
+  String response;
+  gsmSerialFlush();
+  GSMSerial.write(command);
+  delay(1000);
+  while (GSMSerial.available())
+  {
+    response += GSMSerial.readString();
+  }
+  //checkOkError(response);
+  return response;
+}
+
+void gsmSerialFlush()
+{
+  while(GSMSerial.available() > 0)
+  {
+    char t = GSMSerial.read();
+  }
+}
+
+/*
+String getCSQ2()
 {
     char errorValue[2] = "0";
     char csq[100];
     char csqval[20];
 
-    GSMSerial.write("AT+CSQ\r");
-    delay(100);
-    String csqstr = GSMSerial.readString();
+    //GSMSerial.write("AT+CSQ\r");
+    char command[10] = "AT+CSQ\r";
+    
+    String csqstr = gsmCommand(command);
     csqstr.toCharArray(csq, 100);
     //Serial.println(csq);
     MatchState ms(csq);
-    MatchState ok_ms(csq);
-    MatchState error_ms(csq);
     char result = ms.Match("CSQ: [0-9]+");
-    char ok_result = ok_ms.Match("OK");
-    char error_result = error_ms.Match("ERROR");
-
-    if (ok_result == REGEXP_MATCHED)
-    {
-       Serial.println("OK received");
-    }
-    if (error_result == REGEXP_MATCHED)
-    {
-       Serial.println("ERROR received");
-    }
     
     if (result == REGEXP_MATCHED)
     {
@@ -86,7 +174,7 @@ String getCSQ()
         return (errorValue);
     }
 }
-
+*/
 
 // void getCSQ()
 // {
