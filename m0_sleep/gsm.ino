@@ -36,6 +36,7 @@ void send_thru_gsm(char *inputMessage, char *serverNumber)
     String rawMsg = smsCMD + quote + serverNumber + quote + CR;
     rawMsg.toCharArray(msgToSend, 250);
     strncat(msgToSend, inputMessage, 168);
+    Serial.print("Sending to gsm: ");
     Serial.println(inputMessage);  //print to send data
 
     GSMSerial.write(msgToSend);
