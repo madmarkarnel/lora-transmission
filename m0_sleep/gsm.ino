@@ -145,49 +145,6 @@ void gsmSerialFlush()
   }
 }
 
-/*
-String getCSQ2()
-{
-    char errorValue[2] = "0";
-    char csq[100];
-    char csqval[20];
-
-    //GSMSerial.write("AT+CSQ\r");
-    char command[10] = "AT+CSQ\r";
-    
-    String csqstr = gsmCommand(command);
-    csqstr.toCharArray(csq, 100);
-    //Serial.println(csq);
-    MatchState ms(csq);
-    char result = ms.Match("CSQ: [0-9]+");
-    
-    if (result == REGEXP_MATCHED)
-    {
-        // Serial.print ("CSQ: ");
-        // Serial.println (ms.GetMatch(csqval));
-        MatchState csq_ms(ms.GetMatch(csqval));
-        char csq_result = csq_ms.Match("[0-9]+");
-        return (csq_ms.GetMatch(csqval));
-    }
-    else
-    {
-        // Serial.println(csq);
-        return (errorValue);
-    }
-}
-*/
-
-// void getCSQ()
-// {
-//     int i = 0;
-//     GSMSerial.write("AT+CSQ\r");
-//     delay(100);
-
-//     // if serial data available, process it
-//     while (GSMSerial.available() > 0)
-//         processIncomingByte(GSMSerial.read());
-// }
-
 void updateSerial()
 {
     delay(500);
@@ -226,64 +183,7 @@ void process_data(const char *data)
 {
     // for now just display it
     // (but you could compare it to some value, convert to an integer, etc.)
-    // Serial.println(data);
-
-    String gsmReply(data); //convert char* data to string
-    char buff[168];
-    gsmReply.toCharArray(buff, 168);
-
-    /**
-     * from :+CSQ: 31,0
-     * to : +CSQ:'\0'31,0
-    */
-    char *parseReply = strtok(buff, " ");
-    while (parseReply)
-    {
-        if (strncmp(parseReply, "+CSQ:", 5))
-        {
-            Serial.println(parseReply);
-        }
-        // else if (strncmp(parseReply, ",", 3) == 0)
-        // {
-        //     Serial.println(parseReply);
-        // }
-        parseReply = strtok(NULL, ","); // Note: NULL, not IncomingString
-    }
-    
-
-/*    
-    char *parseReply;
-    parseReply = strtok(buff, ":");
-    while (parseReply != NULL)
-    {
-        char *one, *two;
-        Serial.println(parseReply);
-        // one = strtok(buff, ",");
-        // Serial.println(one);
-        // two = strtok(buff, " ");
-        // Serial.println(two);
-        parseReply = strtok(NULL, ",");
-    }
-
-    char *parseReply, *sav1 = NULL;
-    parseReply = strtok_r(buff, ":", &sav1);
-
-    while (parseReply != NULL)
-    {
-        char *keyWord;
-        char *allReply;
-        char *sav2 = NULL;
-        allReply = strtok_r(parseReply, ",", &sav2);
-        Serial.println(allReply);
-
-        if (!strcmp(keyWord, "OK"))
-        {
-            Serial.println("OK from gsm");
-        }
-
-        parseReply = strtok_r(NULL, ":", &sav1);
-    }
-*/
+    Serial.println(data);
 } // end of process_data
 
 void processIncomingByte(const byte inByte)

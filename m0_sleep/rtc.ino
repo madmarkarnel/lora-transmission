@@ -529,7 +529,7 @@ void setAlarmEvery30(int alarmSET)
 
 void enable_rtc_interrupt()
 {
-  rtc.enableInterrupts(store_rtc, 00); // interrupt at (m,s)
+  rtc.enableInterrupts(store_rtc, 00); // interrupt at (minutes, seconds)
   if (DEBUG == 1)
   {
     Serial.print("Next alarm: ");

@@ -45,11 +45,12 @@ Modified: 23 January 2020
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 3
-// Change to 434.0 or other frequency, must match RX's freq!
-#define RF95_FREQ 433.0
-#define DATALEN 200       //max size of dummy length
-#define LORATIMEOUT 200000 //260 000 ~4 minutes 20 seconds timeout
-#define RAININT A4        //rainfall interrupt pin A4
+
+#define RF95_FREQ 433.0     // Change to 434.0 or other frequency, must match RX's freq!
+#define DATALEN 200         //max size of dummy length
+#define LORATIMEOUT 200000  //260 000 ~4 minutes 20 seconds timeout
+#define DUETIMEOUT 200000  //260 000 ~4 minutes 20 seconds timeout
+#define RAININT A4          //rainfall interrupt pin A4
 
 //Pin 11-rx ; 10-tx (GSM comms)
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -80,12 +81,11 @@ char received[250];
 char streamBuffer[250]; //store message
 int customDueFlag = 0;  //for data gathering
 int sendToLoRa = 0;
-int tx_RSSI = 0; //tx rssi
+int tx_RSSI = 0;    //tx rssi
 
-//rain gauge reading
+//rain gauge 
 static unsigned long last_interrupt_time = 0;
 const unsigned int DEBOUNCE_TIME = 40; //40
-// volatile uint8_t rainTips = 0;         //store rain tips
 volatile float rainTips = 0.00;
 char sendRainTip[7] = "0.00";
 
@@ -98,7 +98,6 @@ char Ctimestamp[13] = "";
 char command[30];
 
 unsigned long timestart = 0;
-// unsigned long timenow = 0;
 uint8_t serial_flag = 0;
 uint8_t debug_flag = 0;
 uint8_t rcv_LoRa_flag = 0;
@@ -160,11 +159,11 @@ void setup()
   setAlarmEvery30(alarmFromFlashMem()); //alarm settings
   rf95.sleep();
 
-  GSMSerial.write("AT\r");
-  delay(10);
-  GSMSerial.write("ATE0\r"); //turn off echo
-  delay(10);
-  send_thru_gsm("GSM is Alive!", serverNumber);
+  // GSMSerial.write("AT\r");
+  // delay(10);
+  // GSMSerial.write("ATE0\r"); //turn off echo
+  // delay(10);
+  // send_thru_gsm("GSM is Alive!", serverNumber);
 
   Serial.println("Press '?' to go DEBUG mode!");
 
@@ -174,7 +173,6 @@ void setup()
     if (Serial.available())
     {
       debug_flag = 1;
-      delay(100);
       Serial.println("Debug Mode!");
       serial_flag = 1;
     }
@@ -209,20 +207,16 @@ void wakeAndSleep()
   {
     flashLed(LED_BUILTIN, 5, 100);
 
-    build_message();
-    delay(10);
-    send_thru_gsm(dataToSend, serverNumber);
-    delay(10);
-    resetRainTips();
+    // build_message();
+    // delay(10);
+    // send_thru_gsm(dataToSend, serverNumber);
+    // delay(10);
+    // resetRainTips();
 
-    get_Due_Data(0); //get data from sensors
-
-    //real time clock alarm settings
+    get_Due_Data(0);
     setAlarmEvery30(alarmFromFlashMem());
-    delay(75);
     rtc.clearINTStatus(); // needed to re-trigger rtc
-
-    rf95.sleep(); //sleep LoRa
+    rf95.sleep();
     OperationFlag = false;
   }
   // working as of May 28, 2019
@@ -237,8 +231,6 @@ void wakeAndSleep()
 
 void sleepNow()
 {
-  //re-enable rain gauge interrupt before going to sleep
-  // attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
   SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk; //disable systick interrupt
   LowPower.standby();                         //enters sleep mode
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;  //Enabale systick interrupt
@@ -304,11 +296,10 @@ void send_thru_lora(char *radiopacket)
 void receive_lora_data(uint8_t mode)
 {
   unsigned long start = millis();
-  // while (rcv_LoRa_flag == 0)
   do
   {
     // timeOut in case walang makuhang data LoRa transmitter ~4 minutes 260 000
-    if ((millis() - start) > 300000)
+    if ((millis() - start) > LORATIMEOUT)
     {
       start = millis();
       send_thru_gsm("LoRa receiver time out . . .",serverNumber);
@@ -325,14 +316,12 @@ void receive_lora_data(uint8_t mode)
         {
           received[i] = (uint8_t)buf[i];
         }
-        //received from tx
         received[i] = (uint8_t)'\0';
-        // Serial.println(received);
+
         if (strstr(received, ">>"))
         {
           if (mode == 1)
           {
-            // Serial.println("Sending data to gsm.");
             for (byte i = 0; i < strlen(received); i++)
             {
               received[i] = received[i + 2];
@@ -499,7 +488,7 @@ void get_Due_Data(uint8_t mode)
   delay(500);
 
   // timeOut in case walang makuhang data sa due
-  if ((millis() - start) > LORATIMEOUT)
+  if ((millis() - start) > DUETIMEOUT)
   {
     start = millis();
     no_data_from_senslope(1);
@@ -653,7 +642,7 @@ void gateway_mode()
   if (OperationFlag)
   {
     // wakeGSM();
-    // flashLed(LED_BUILTIN, 2, 100);
+    flashLed(LED_BUILTIN, 2, 50);
     send_rain_tips();
     resetRainTips();
     get_Due_Data(1);
@@ -663,7 +652,7 @@ void gateway_mode()
       receive_lora_data(1);
     }
     
-    rf95.sleep(); //sleep LoRa
+    rf95.sleep();
     // sleepGSM();
     attachInterrupt(RTCINTPIN, wake, FALLING);
     OperationFlag = false;
