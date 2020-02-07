@@ -302,7 +302,7 @@ void receive_lora_data(uint8_t mode)
     if ((millis() - start) > LORATIMEOUT)
     {
       start = millis();
-      send_thru_gsm("LoRa receiver time out . . .",serverNumber);
+      // send_thru_gsm("LoRa receiver time out . . .",serverNumber);
       rcv_LoRa_flag = 1;
     }
 
@@ -365,6 +365,19 @@ void wake()
   detachInterrupt(RTCINTPIN);
 }
 
+char* cmd_from_flashMem()
+{
+  String get_cmd;
+  char new_cmd[10];
+  sensCommand = passCommand.read();
+  get_cmd = sensCommand.stationName;
+  get_cmd.replace("\r", "");
+  // Serial.println(get_cmd);
+  get_cmd.toCharArray(new_cmd, 10);
+  return new_cmd;
+}
+
+
 void build_message()
 {
   char csq[5];
@@ -379,7 +392,8 @@ void build_message()
 
   for (int i = 0; i < DATALEN; i++)
     dataToSend[i] = 0;
-  strncpy((dataToSend), (sensCommand.stationName), (10));
+  // strncpy((dataToSend), (sensCommand.stationName), (10));
+  strncpy((dataToSend), (cmd_from_flashMem()), (10));
   strncat(dataToSend, "W", 1);
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, temp, sizeof(temp));
@@ -520,6 +534,12 @@ void get_Due_Data(uint8_t mode)
         flashLed(LED_BUILTIN, 2, 100);
         DUESerial.write("OK");
       }
+      else if(mode == 2)
+      {
+        send_thru_lora(streamBuffer);
+        flashLed(LED_BUILTIN, 2, 100);
+        DUESerial.write("OK");
+      }
       else
       {
         strncat(streamBuffer, "<<", 2);
@@ -565,12 +585,12 @@ void no_data_from_senslope(uint8_t mode)
 
   if (mode == 1)
   {
-    strncpy((streamBuffer), (sensCommand.stationName), (10));
+    strncpy((streamBuffer), (cmd_from_flashMem()), (10));
   }
   else
   {
     strncpy(streamBuffer, ">>", 2);
-    strncat((streamBuffer), (sensCommand.stationName), (10));
+    strncat((streamBuffer), (cmd_from_flashMem()), (10));
   }
   strncat(streamBuffer, "*NODATAFROMSENSLOPE*", 22);
   strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
@@ -680,5 +700,5 @@ void send_rain_tips()
   build_message();
   delay(100);
   send_thru_gsm(dataToSend, serverNumber);
-  delay(50);
+  // delay(50);
 }

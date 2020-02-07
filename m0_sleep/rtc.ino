@@ -79,6 +79,11 @@ void getAtcommand()
   {
     setAlarmInterval();
   }
+  else if (command == "H")
+  {
+    Serial.println(cmd_from_flashMem());
+    build_message();
+  }
   else if (command == "D")
   {
     Serial.print("RTC temperature: ");
@@ -185,6 +190,7 @@ void printMenu()
   Serial.println(F("[E] Exit Debug mode."));
   Serial.println(F("[F] Print data to send. (rain)"));
   Serial.println(F("[G] Print input voltage"));
+  Serial.println(F("[H] Print station name from flash memory."));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));
