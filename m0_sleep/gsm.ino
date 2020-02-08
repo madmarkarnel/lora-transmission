@@ -7,6 +7,7 @@ void send_thru_gsm(char *inputMessage, char *serverNumber)
     String smsCMD = ("AT+CMGS=");
     String quote = ("\"");
     String CR = ("\r");
+    String response;
 
     //inputMessage
     for (int i = 0; i < 168; i++)
@@ -39,10 +40,27 @@ void send_thru_gsm(char *inputMessage, char *serverNumber)
     Serial.print("Sending to gsm: ");
     Serial.println(inputMessage);  //print to send data
 
-    GSMSerial.write(msgToSend);
-    delay(500);
-
-    GSMSerial.write(26); //ctrl Z
+    for (int i =0; i<3; i++)
+    {
+      gsmSerialFlush();
+      GSMSerial.write(msgToSend);
+      delay(500);
+      GSMSerial.write(26); //ctrl Z
+      delay(500);
+      while (GSMSerial.available())
+      {
+        response += GSMSerial.readString();
+      }
+      if (checkOkError(response) == 0)
+      {
+        Serial.println("Message sent!");
+        break;
+      }
+      else
+      {
+        Serial.println("Sending message failed.");
+      }
+    }
 }
 
 String getCSQ()
