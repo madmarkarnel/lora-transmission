@@ -28,16 +28,15 @@ void send_thru_gsm(char *inputMessage, char *serverNumber)
         sendingNumber[i] = (uint8_t)serverNumber[i];
     }
 
-    // GSMSerial.write("AT\r");
-    // delay(500);
-
     GSMSerial.write("AT+CMGF=1\r");
     delay(500);
 
     String rawMsg = smsCMD + quote + serverNumber + quote + CR;
     rawMsg.toCharArray(msgToSend, 250);
     strncat(msgToSend, inputMessage, 168);
-    Serial.print("Sending to gsm: ");
+    Serial.print("Sending to '");
+    Serial.print(get_serverNum_from_flashMem());
+    Serial.print("': ");
     Serial.println(inputMessage);  //print to send data
 
     for (int i =0; i<3; i++)

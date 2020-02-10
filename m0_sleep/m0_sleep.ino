@@ -37,8 +37,8 @@ Modified: 23 January 2020
 #define DUEBAUD 9600
 #define DUESerial Serial1
 #define RTCINTPIN 6
-#define DUETRIG 10 //default is pin 10 ; changed from pin 10 to pin 9
-#define DUETRIGOLD 9 //default is pin 10 ; changed from pin 10 to pin 9
+#define DUETRIG 9 //default is pin 10 ; changed from pin 10 to pin 9
+// #define DUETRIGOLD 10 //default is pin 10 ; changed from pin 10 to pin 9
 #define DEBUG 1
 #define VBATPIN A7
 #define VBATPINEXT A5
@@ -121,6 +121,14 @@ typedef struct
   char password[50];
   char stationName[10];
 } Senslope;
+Senslope sensCommand;
+
+typedef struct
+{
+  boolean valid;
+  char inputNumber[50];
+} serNumber;
+serNumber flashServerNumber;
 
 /**
  * Reserve a portion of flash memory to store an "int" variable
@@ -129,7 +137,8 @@ typedef struct
 FlashStorage(alarmStorage, int);
 FlashStorage(loggerVersion, int);
 FlashStorage(passCommand, Senslope);
-Senslope sensCommand;
+FlashStorage(newServerNum, serNumber);
+
 
 void setup()
 {
@@ -161,11 +170,14 @@ void setup()
   setAlarmEvery30(alarmFromFlashMem()); //alarm settings
   rf95.sleep();
 
-  // GSMSerial.write("AT\r");
-  // delay(10);
-  // GSMSerial.write("ATE0\r"); //turn off echo
-  // delay(10);
-  // send_thru_gsm("GSM is Alive!", serverNumber);
+  //gsm initialization
+  GSMSerial.write("AT\r");
+  delay(100);
+  GSMSerial.write("ATE0\r"); //turn off echo
+  delay(100);
+  // GSMSerial.write("AT+CMGF=1\r");
+  // delay(100);
+  gsmManualNetworkConnect();
 
   Serial.println("Press '?' to go DEBUG mode!");
 
@@ -196,22 +208,18 @@ void loop()
   {
     getAtcommand();
   }
-/*
-  if (get_logger_version() == 1)
-  {
-    gateway_mode();
-  }
-  else if (get_logger_version() == 2)
-  {
-    wakeAndSleep(1);
-  }
-  else
-  {
-    wakeAndSleep(0);
-  }
-*/  
-  // gateway_mode();
-  wakeAndSleep(get_logger_version());
+
+  // if (get_logger_version() == 1)
+  // {
+  //   gateway_mode();
+  // }
+  // else
+  // {
+  //   wakeAndSleep(get_logger_version());
+  // }
+
+  gateway_mode();
+  // wakeAndSleep(get_logger_version());
 }
 
 void wakeAndSleep(uint8_t verSion)
@@ -396,6 +404,18 @@ char *cmd_from_flashMem()
   // Serial.println(get_cmd);
   get_cmd.toCharArray(new_cmd, 10);
   return new_cmd;
+}
+
+char *get_serverNum_from_flashMem()
+{
+  String flashNum;
+  char memNum[50];
+  flashServerNumber = newServerNum.read();
+  flashNum = flashServerNumber.inputNumber;
+  flashNum.replace("\r", "");
+  flashNum.replace(" ", "");
+  flashNum.toCharArray(memNum, 50);
+  return memNum;
 }
 
 void build_message()
@@ -639,28 +659,28 @@ void no_data_from_senslope(uint8_t mode)
 void turn_ON_due(uint8_t mode)
 {
   Serial.println("Turning ON Custom Due. . .");
-  if (mode == 1 || mode == 2)
-  {
-    digitalWrite(DUETRIGOLD, HIGH);
-  }
-  else
-  {
+  // if (mode == 1 || mode == 2)
+  // {
+  //   digitalWrite(DUETRIGOLD, HIGH);
+  // }
+  // else
+  // {
     digitalWrite(DUETRIG, HIGH);
-  }
+  // }
   delay(100);
 }
 
 void turn_OFF_due(uint8_t mode)
 {
   Serial.println("Turning OFF Custom Due. . .");
-  if (mode == 1 || mode == 2)
-  {
-    digitalWrite(DUETRIGOLD, LOW);
-  }
-  else
-  {
+  // if (mode == 1 || mode == 2)
+  // {
+  //   digitalWrite(DUETRIGOLD, LOW);
+  // }
+  // else
+  // {
     digitalWrite(DUETRIG, LOW);
-  }
+  // }
   delay(100);
 }
 
@@ -740,6 +760,6 @@ void send_rain_tips()
 {
   build_message();
   delay(100);
-  send_thru_gsm(dataToSend, serverNumber);
+  send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
   // delay(50);
 }

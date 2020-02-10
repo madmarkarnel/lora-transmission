@@ -151,6 +151,7 @@ void getAtcommand()
   else if (command == "F")
   {
     build_message();
+    send_thru_gsm(dataToSend, "639175972526");
   }
   else if (command == "I")
   {
@@ -160,6 +161,16 @@ void getAtcommand()
   else if (command == "J")
   {
     setLoggerVersion();
+  }
+  else if (command == "K")
+  {
+    Serial.print("Server Number: ");
+    Serial.println(get_serverNum_from_flashMem());
+  }
+  else if (command == "L")
+  {
+
+    changeServerNumber();
   }
   else if (command == "G")
   {
@@ -201,6 +212,8 @@ void printMenu()
   Serial.println(F("[H] Print station name from flash memory."));
   Serial.println(F("[I] Print logger version from flash memory"));
   Serial.println(F("[J] Change logger version from flash memory"));
+  Serial.println(F("[K] Print 'server number' from flash memory"));
+  Serial.println(F("[L] Change 'server number' from flash memory"));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));
@@ -298,6 +311,15 @@ void changeSensCommand()
   dynaCommand.toCharArray(sensCommand.senslopeCommand, 50);
   sensorName.toCharArray(sensCommand.stationName, 10);
   passCommand.write(sensCommand); //save to flash memory
+}
+
+void changeServerNumber()
+{
+  Serial.setTimeout(15000);
+  Serial.println("Insert server number GLOBE - 639175972526 ; SMART - 639088125642");
+  String ser_num = Serial.readStringUntil('\n');
+  ser_num.toCharArray(flashServerNumber.inputNumber, 50);
+  newServerNum.write(flashServerNumber); //save to flash memory
 }
 
 void setupTime()
