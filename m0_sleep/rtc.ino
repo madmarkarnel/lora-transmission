@@ -46,7 +46,7 @@ void getAtcommand()
   }
   else if (command == "A")
   {
-    get_Due_Data(1);
+    get_Due_Data(get_logger_version());
   }
   else if (command == "B")
   {
@@ -142,11 +142,9 @@ void getAtcommand()
   else if (command == "E")
   {
     // sleepGSM();
-    OperationFlag = false;
     Serial.println("Exiting debug mode!");
     //real time clock alarm settings
     setAlarmEvery30(alarmFromFlashMem());
-    delay(75);
     rtc.clearINTStatus(); // needed to re-trigger rtc
     debug_flag = 0;
   }
@@ -154,11 +152,21 @@ void getAtcommand()
   {
     build_message();
   }
+  else if (command == "I")
+  {
+    Serial.print("Logger version: ");
+    Serial.println(get_logger_version());
+  }
+  else if (command == "J")
+  {
+    setLoggerVersion();
+  }
   else if (command == "G")
   {
     //print voltage
     Serial.print("Voltage: ");
     Serial.println(BatteryVoltage());
+    Serial.println(read_batt_vol());
   }
   else if (command == "Y")
   {
@@ -191,6 +199,8 @@ void printMenu()
   Serial.println(F("[F] Print data to send. (rain)"));
   Serial.println(F("[G] Print input voltage"));
   Serial.println(F("[H] Print station name from flash memory."));
+  Serial.println(F("[I] Print logger version from flash memory"));
+  Serial.println(F("[J] Change logger version from flash memory"));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));
@@ -218,6 +228,33 @@ void print_rtcInterval()
   Serial.println("[4] Alarm for every 10 minutes interval");
   Serial.println("[5] Alarm for every 5,15,25. . .  minutes interval");
   Serial.println("------------------------------------------------");
+}
+
+void setLoggerVersion()
+{
+  int version;
+  Serial.println("[0] Default LoRa transmitter for Raspberry Pi");
+  Serial.println("[1] V5 datalogger with GSM");
+  Serial.println("[2] For V5 datalogger remote transmitter");
+  delay(1000);
+  while (!Serial.available())
+  {
+  }
+  if (Serial.available())
+  {
+    Serial.setTimeout(8000);
+    version = Serial.parseInt();
+    Serial.print("INPUT = ");
+    Serial.println(version);
+  }
+  delay(50);
+  loggerVersion.write(version);
+}
+
+uint8_t get_logger_version()
+{
+  int lversion = loggerVersion.read();
+  return lversion;
 }
 
 void setAlarmInterval()
@@ -503,33 +540,33 @@ void setAlarmEvery30(int alarmSET)
     case 5:
     {
       //set every 15 minutes interval
-      if ((now.minute() >= 0) && (now.minute() <= 9))
+      if ((now.minute() >= 5) && (now.minute() <= 14))
       {
         store_rtc = 15;
       }
-      else if ((now.minute() >= 10) && (now.minute() <= 19))
+      else if ((now.minute() >= 15) && (now.minute() <= 24))
       {
         store_rtc = 25;
       }
-      else if ((now.minute() >= 20) && (now.minute() <= 29))
+      else if ((now.minute() >= 25) && (now.minute() <= 34))
       {
         store_rtc = 35;
       }
-      else if ((now.minute() >= 30) && (now.minute() <= 39))
+      else if ((now.minute() >= 35) && (now.minute() <= 44))
       {
         store_rtc = 45;
       }
-      else if ((now.minute() >= 40) && (now.minute() <= 49))
+      else if ((now.minute() >= 45) && (now.minute() <= 54))
       {
         store_rtc = 55;
       }
-      else if ((now.minute() >= 50) && (now.minute() <= 59))
+      else if ((now.minute() >= 55) && (now.minute() <= 4))
       {
         store_rtc = 5;
       }
       enable_rtc_interrupt();
       break;
-    }    
+    } 
   }
 }
 

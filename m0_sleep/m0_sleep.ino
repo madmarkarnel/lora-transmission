@@ -37,20 +37,22 @@ Modified: 23 January 2020
 #define DUEBAUD 9600
 #define DUESerial Serial1
 #define RTCINTPIN 6
-#define DUETRIG 9 //default is pin 10 ; changed from pin 10 to pin 9
+#define DUETRIG 10 //default is pin 10 ; changed from pin 10 to pin 9
+#define DUETRIGOLD 9 //default is pin 10 ; changed from pin 10 to pin 9
 #define DEBUG 1
 #define VBATPIN A7
+#define VBATPINEXT A5
 
 //for m0
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 3
 
-#define RF95_FREQ 433.0     // Change to 434.0 or other frequency, must match RX's freq!
-#define DATALEN 200         //max size of dummy length
-#define LORATIMEOUT 200000  //260 000 ~4 minutes 20 seconds timeout
+#define RF95_FREQ 433.0    // Change to 434.0 or other frequency, must match RX's freq!
+#define DATALEN 200        //max size of dummy length
+#define LORATIMEOUT 200000 //260 000 ~4 minutes 20 seconds timeout
 #define DUETIMEOUT 200000  //260 000 ~4 minutes 20 seconds timeout
-#define RAININT A4          //rainfall interrupt pin A4
+#define RAININT A4         //rainfall interrupt pin A4
 
 //Pin 11-rx ; 10-tx (GSM comms)
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -81,9 +83,9 @@ char received[250];
 char streamBuffer[250]; //store message
 int customDueFlag = 0;  //for data gathering
 int sendToLoRa = 0;
-int tx_RSSI = 0;    //tx rssi
+int tx_RSSI = 0; //tx rssi
 
-//rain gauge 
+//rain gauge
 static unsigned long last_interrupt_time = 0;
 const unsigned int DEBOUNCE_TIME = 40; //40
 volatile float rainTips = 0.00;
@@ -101,7 +103,6 @@ unsigned long timestart = 0;
 uint8_t serial_flag = 0;
 uint8_t debug_flag = 0;
 uint8_t rcv_LoRa_flag = 0;
-
 uint16_t store_rtc = 00; //store rtc alarm
 
 /**
@@ -126,6 +127,7 @@ typedef struct
  * and call it "alarmStorage".
 */
 FlashStorage(alarmStorage, int);
+FlashStorage(loggerVersion, int);
 FlashStorage(passCommand, Senslope);
 Senslope sensCommand;
 
@@ -186,7 +188,6 @@ void setup()
   // sleepGSM();
 
   flashLed(LED_BUILTIN, 5, 100);
-  OperationFlag = false;
 }
 
 void loop()
@@ -195,25 +196,44 @@ void loop()
   {
     getAtcommand();
   }
-  gateway_mode();
-
-  // receive_lora_data(1);
-  // get_Due_Data(0);
+/*
+  if (get_logger_version() == 1)
+  {
+    gateway_mode();
+  }
+  else if (get_logger_version() == 2)
+  {
+    wakeAndSleep(1);
+  }
+  else
+  {
+    wakeAndSleep(0);
+  }
+*/  
+  // gateway_mode();
+  wakeAndSleep(get_logger_version());
 }
 
-void wakeAndSleep()
+void wakeAndSleep(uint8_t verSion)
 {
   if (OperationFlag)
   {
     flashLed(LED_BUILTIN, 5, 100);
-
     // build_message();
     // delay(10);
     // send_thru_gsm(dataToSend, serverNumber);
     // delay(10);
     // resetRainTips();
 
-    get_Due_Data(0);
+    if (verSion == 1)
+    {
+      get_Due_Data(2);  //tx of v5 logger
+    }
+    else
+    {
+      get_Due_Data(0);  //default arabica
+    }
+
     setAlarmEvery30(alarmFromFlashMem());
     rtc.clearINTStatus(); // needed to re-trigger rtc
     rf95.sleep();
@@ -287,6 +307,7 @@ void send_thru_lora(char *radiopacket)
     payload[i] = (uint8_t)radiopacket[i];
   }
   payload[i] = (uint8_t)'\0';
+  Serial.print("Sending to LoRa: ");
   Serial.println((char *)payload);
   // Serial.println("sending payload!");
   rf95.send(payload, length); //sending data to LoRa
@@ -365,7 +386,7 @@ void wake()
   detachInterrupt(RTCINTPIN);
 }
 
-char* cmd_from_flashMem()
+char *cmd_from_flashMem()
 {
   String get_cmd;
   char new_cmd[10];
@@ -376,7 +397,6 @@ char* cmd_from_flashMem()
   get_cmd.toCharArray(new_cmd, 10);
   return new_cmd;
 }
-
 
 void build_message()
 {
@@ -421,6 +441,21 @@ void flashLed(int pin, int times, int wait)
       delay(wait);
     }
   }
+}
+
+char *read_batt_vol()
+{
+  char volt[6];
+  char voltMessage[200];
+  dtostrf((BatteryVoltage()), 4, 2, volt);
+  readTimeStamp();
+
+  strncpy(voltMessage, cmd_from_flashMem(), 10);
+  strncat(voltMessage, "*VOLT:", 7);
+  strncat(voltMessage, volt, sizeof(volt));
+  strncat(voltMessage, "*", 1);
+  strncat(voltMessage, Ctimestamp, sizeof(Ctimestamp));
+  return voltMessage;
 }
 
 // Measure battery voltage using divider on Feather M0
@@ -475,13 +510,12 @@ void getPwrdFromMemory()
 /**
  * Get custom due sensor data.
  * ~5 minutes timeout if no data read.  
- * mode in sending data: 1-gsm ; 0 - LoRa(defualt)
+ * mode in sending data: 1-gsm ; 0 - LoRa(defualt) ; 2 - V5 logger
 */
 void get_Due_Data(uint8_t mode)
 {
-  delay(2000);
   unsigned long start = millis();
-  turn_ON_due();
+  turn_ON_due(get_logger_version());
   delay(500);
   readTimeStamp();
 
@@ -492,81 +526,73 @@ void get_Due_Data(uint8_t mode)
   strncat(command, Ctimestamp, sizeof(Ctimestamp));
   Serial.println(command);
   DUESerial.write(command);
-  delay(100);
 
   while (customDueFlag == 0)
   {
-  for (int i = 0; i < 250; ++i)
-    streamBuffer[i] = 0x00;
-  DUESerial.readBytesUntil('\n', streamBuffer, 250);
-  delay(500);
+    for (int i = 0; i < 250; ++i)
+      streamBuffer[i] = 0x00;
+    DUESerial.readBytesUntil('\n', streamBuffer, 250);
+    delay(500);
 
-  // timeOut in case walang makuhang data sa due
-  if ((millis() - start) > DUETIMEOUT)
-  {
-    start = millis();
-    no_data_from_senslope(1);
-    customDueFlag = 1;
-  }
-
-  if (strstr(streamBuffer, ">>"))
-  {
-    if (strstr(streamBuffer, "*"))
+    // timeOut in case walang makuhang data sa due
+    if ((millis() - start) > DUETIMEOUT)
     {
-      Serial.println("Getting sensor data. . .");
-      // removed
-      // strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
-      // strncat(streamBuffer, "<<", 2);
+      start = millis();
+      no_data_from_senslope(mode);
+      customDueFlag = 1;
+    }
 
-      Serial.println(streamBuffer);
-      if (mode == 1)
+    if (strstr(streamBuffer, ">>"))
+    {
+      if (strstr(streamBuffer, "*"))
       {
-        /**
+        Serial.println("Getting sensor data. . .");
+        if (mode == 1)
+        {
+          /**
             * Remove 1st and 2nd character data in string
             * Not needed in GSM mode 
           */
-        for (byte i = 0; i < strlen(streamBuffer); i++)
-        {
-          streamBuffer[i] = streamBuffer[i + 2];
+          for (byte i = 0; i < strlen(streamBuffer); i++)
+          {
+            streamBuffer[i] = streamBuffer[i + 2];
+          }
+          send_thru_gsm(streamBuffer, serverNumber); //send to GSM
+          flashLed(LED_BUILTIN, 2, 100);
+          DUESerial.write("OK");
         }
-        Serial.println(streamBuffer);
-        send_thru_gsm(streamBuffer, serverNumber); //send to GSM
-        flashLed(LED_BUILTIN, 2, 100);
-        DUESerial.write("OK");
-      }
-      else if(mode == 2)
-      {
-        send_thru_lora(streamBuffer);
-        flashLed(LED_BUILTIN, 2, 100);
-        DUESerial.write("OK");
+        else if (mode == 2)
+        {
+          send_thru_lora(streamBuffer);
+          flashLed(LED_BUILTIN, 2, 100);
+          DUESerial.write("OK");
+        }
+        else
+        {
+          strncat(streamBuffer, "<<", 2);
+          delay(10);
+          send_thru_lora(streamBuffer);
+          flashLed(LED_BUILTIN, 2, 100);
+          DUESerial.write("OK");
+        }
       }
       else
       {
-        strncat(streamBuffer, "<<", 2);
-        delay(10);
-        send_thru_lora(streamBuffer);
-        flashLed(LED_BUILTIN, 2, 100);
-        DUESerial.write("OK");
+        //maglagay ng counter max 5 then exit
+        Serial.println("Message incomplete");
+        DUESerial.write("NO");
       }
     }
-    else
+    else if (strstr(streamBuffer, "STOPLORA"))
     {
-      //maglagay ng counter max 5 then exit
-      Serial.println("Message incomplete");
-      DUESerial.write("NO");
+      send_thru_lora("STOPLORA");
+      Serial.println("Done getting DUE data!");
+      streamBuffer[0] = '\0';
+      flashLed(LED_BUILTIN, 4, 90);
+      customDueFlag = 1;
     }
   }
-  else if (strstr(streamBuffer, "STOPLORA"))
-  {
-    send_thru_lora("STOPLORA");
-    Serial.println(">>STOPLORA");
-    Serial.println("Done getting DUE data!");
-    streamBuffer[0] = '\0';
-    flashLed(LED_BUILTIN, 4, 90);
-    customDueFlag = 1;
-  }
-  }
-  turn_OFF_due();
+  turn_OFF_due(get_logger_version());
   customDueFlag = 0;
   getSensorDataFlag = true;
 }
@@ -606,21 +632,35 @@ void no_data_from_senslope(uint8_t mode)
     delay(10);
     send_thru_lora(streamBuffer);
   }
-  Serial.println(streamBuffer);
+  // Serial.println(streamBuffer);
   customDueFlag = 1;
 }
 
-void turn_ON_due()
+void turn_ON_due(uint8_t mode)
 {
   Serial.println("Turning ON Custom Due. . .");
-  digitalWrite(DUETRIG, HIGH);
+  if (mode == 1 || mode == 2)
+  {
+    digitalWrite(DUETRIGOLD, HIGH);
+  }
+  else
+  {
+    digitalWrite(DUETRIG, HIGH);
+  }
   delay(100);
 }
 
-void turn_OFF_due()
+void turn_OFF_due(uint8_t mode)
 {
   Serial.println("Turning OFF Custom Due. . .");
-  digitalWrite(DUETRIG, LOW);
+  if (mode == 1 || mode == 2)
+  {
+    digitalWrite(DUETRIGOLD, LOW);
+  }
+  else
+  {
+    digitalWrite(DUETRIG, LOW);
+  }
   delay(100);
 }
 
@@ -671,7 +711,7 @@ void gateway_mode()
     {
       receive_lora_data(1);
     }
-    
+
     rf95.sleep();
     // sleepGSM();
     attachInterrupt(RTCINTPIN, wake, FALLING);
@@ -688,6 +728,7 @@ void gateway_mode()
 
   //real time clock alarm settings
   setAlarmEvery30(alarmFromFlashMem());
+  delay(75);
   rtc.clearINTStatus(); // needed to re-trigger rtc
 
   attachInterrupt(RAININT, rainISR, FALLING);
