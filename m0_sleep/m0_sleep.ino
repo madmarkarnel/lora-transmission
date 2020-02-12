@@ -41,7 +41,7 @@ Modified: 23 January 2020
 // #define DUETRIGOLD 10 //default is pin 10 ; changed from pin 10 to pin 9
 #define DEBUG 1
 #define VBATPIN A7
-#define VBATPINEXT A5
+#define VBATEXT A5
 
 //for m0
 #define RFM95_CS 8
@@ -139,7 +139,6 @@ FlashStorage(loggerVersion, int);
 FlashStorage(passCommand, Senslope);
 FlashStorage(newServerNum, serNumber);
 
-
 void setup()
 {
   // put your setup code here, to run once:
@@ -175,12 +174,12 @@ void setup()
   delay(100);
   GSMSerial.write("ATE0\r"); //turn off echo
   delay(100);
-  // GSMSerial.write("AT+CMGF=1\r");
-  // delay(100);
   gsmManualNetworkConnect();
+  GSMSerial.write("AT+CMGF=1\r");
+  delay(100);
+  send_thru_gsm("GSM Alive!", "639954645704");
 
   Serial.println("Press '?' to go DEBUG mode!");
-
   unsigned long serStart = millis();
   while (serial_flag == 0)
   {
@@ -198,7 +197,6 @@ void setup()
     }
   }
   // sleepGSM();
-
   flashLed(LED_BUILTIN, 5, 100);
 }
 
@@ -209,17 +207,52 @@ void loop()
     getAtcommand();
   }
 
-  // if (get_logger_version() == 1)
-  // {
-  //   gateway_mode();
-  // }
-  // else
-  // {
-  //   wakeAndSleep(get_logger_version());
-  // }
+  if (OperationFlag)
+  {
+    if (get_logger_version() == 1)
+    {
+      flashLed(LED_BUILTIN, 2, 50);
+      send_rain_tips();
+      resetRainTips();
+      get_Due_Data(1);
 
-  gateway_mode();
-  // wakeAndSleep(get_logger_version());
+      if (getSensorDataFlag == true && OperationFlag == true)
+      {
+        receive_lora_data(1);
+      }
+
+      rf95.sleep();
+      // sleepGSM();
+      attachInterrupt(RTCINTPIN, wake, FALLING);
+    }
+    else if (get_logger_version() == 2)
+    {
+      get_Due_Data(2); //tx of v5 logger
+    }
+    else
+    {
+      get_Due_Data(0); //default arabica
+    }
+
+    getSensorDataFlag = false;
+    OperationFlag = false;
+  }
+
+  if (rainFallFlag)
+  {
+    flashLed(LED_BUILTIN, 1, 50);
+    attachInterrupt(RAININT, rainISR, FALLING);
+    rainFallFlag = false;
+  }
+
+  //real time clock alarm settings
+  setAlarmEvery30(alarmFromFlashMem());
+  delay(75);
+  rtc.clearINTStatus();
+
+  attachInterrupt(RAININT, rainISR, FALLING);
+  attachInterrupt(RTCINTPIN, wake, FALLING);
+  sleepNow();
 }
 
 void wakeAndSleep(uint8_t verSion)
@@ -235,11 +268,11 @@ void wakeAndSleep(uint8_t verSion)
 
     if (verSion == 1)
     {
-      get_Due_Data(2);  //tx of v5 logger
+      get_Due_Data(2); //tx of v5 logger
     }
     else
     {
-      get_Due_Data(0);  //default arabica
+      get_Due_Data(0); //default arabica
     }
 
     setAlarmEvery30(alarmFromFlashMem());
@@ -410,10 +443,10 @@ char *get_serverNum_from_flashMem()
 {
   String flashNum;
   char memNum[50];
+  char numCopy[15];
   flashServerNumber = newServerNum.read();
   flashNum = flashServerNumber.inputNumber;
   flashNum.replace("\r", "");
-  flashNum.replace(" ", "");
   flashNum.toCharArray(memNum, 50);
   return memNum;
 }
@@ -463,14 +496,14 @@ void flashLed(int pin, int times, int wait)
   }
 }
 
-char *read_batt_vol()
+char *read_batt_vol(uint8_t ver)
 {
   char volt[6];
   char voltMessage[200];
   dtostrf((BatteryVoltage()), 4, 2, volt);
   readTimeStamp();
-
-  strncpy(voltMessage, cmd_from_flashMem(), 10);
+  strncpy(voltMessage, ">>", 2);
+  strncat(voltMessage, cmd_from_flashMem(), 10);
   strncat(voltMessage, "*VOLT:", 7);
   strncat(voltMessage, volt, sizeof(volt));
   strncat(voltMessage, "*", 1);
@@ -535,6 +568,7 @@ void getPwrdFromMemory()
 void get_Due_Data(uint8_t mode)
 {
   unsigned long start = millis();
+
   turn_ON_due(get_logger_version());
   delay(500);
   readTimeStamp();
@@ -648,8 +682,8 @@ void no_data_from_senslope(uint8_t mode)
   }
   else
   {
-    strncat(streamBuffer, "<<", 2);
-    delay(10);
+    // strncat(streamBuffer, "<<", 2);
+    // delay(10);
     send_thru_lora(streamBuffer);
   }
   // Serial.println(streamBuffer);
@@ -665,7 +699,7 @@ void turn_ON_due(uint8_t mode)
   // }
   // else
   // {
-    digitalWrite(DUETRIG, HIGH);
+  digitalWrite(DUETRIG, HIGH);
   // }
   delay(100);
 }
@@ -679,7 +713,7 @@ void turn_OFF_due(uint8_t mode)
   // }
   // else
   // {
-    digitalWrite(DUETRIG, LOW);
+  digitalWrite(DUETRIG, LOW);
   // }
   delay(100);
 }
@@ -760,6 +794,6 @@ void send_rain_tips()
 {
   build_message();
   delay(100);
-  send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
+  send_thru_gsm(dataToSend, serverNumber);
   // delay(50);
 }

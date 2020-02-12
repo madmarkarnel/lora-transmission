@@ -151,7 +151,7 @@ void getAtcommand()
   else if (command == "F")
   {
     build_message();
-    send_thru_gsm(dataToSend, "639175972526");
+    send_thru_gsm(dataToSend, serverNumber);
   }
   else if (command == "I")
   {
@@ -177,7 +177,7 @@ void getAtcommand()
     //print voltage
     Serial.print("Voltage: ");
     Serial.println(BatteryVoltage());
-    Serial.println(read_batt_vol());
+    Serial.println(read_batt_vol(get_logger_version()));
   }
   else if (command == "Y")
   {
