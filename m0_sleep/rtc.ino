@@ -145,13 +145,14 @@ void getAtcommand()
     Serial.println("Exiting debug mode!");
     //real time clock alarm settings
     setAlarmEvery30(alarmFromFlashMem());
+    delay(75);
     rtc.clearINTStatus(); // needed to re-trigger rtc
     debug_flag = 0;
   }
   else if (command == "F")
   {
     build_message();
-    send_thru_gsm(dataToSend, serverNumber);
+    send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
   }
   else if (command == "I")
   {
@@ -169,14 +170,18 @@ void getAtcommand()
   }
   else if (command == "L")
   {
-
     changeServerNumber();
+  }
+  else if (command == "M")
+  {
+    Serial.print("RSSI: ");
+    Serial.println(get_rssi());
   }
   else if (command == "G")
   {
     //print voltage
     Serial.print("Voltage: ");
-    Serial.println(BatteryVoltage());
+    Serial.println(BatteryVoltage(get_logger_version()));
     Serial.println(read_batt_vol(get_logger_version()));
   }
   else if (command == "Y")
@@ -214,6 +219,7 @@ void printMenu()
   Serial.println(F("[J] Change logger version from flash memory"));
   Serial.println(F("[K] Print 'server number' from flash memory"));
   Serial.println(F("[L] Change 'server number' from flash memory"));
+  Serial.println(F("[M] Print LoRa rssi values."));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));

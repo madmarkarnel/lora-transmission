@@ -1,73 +1,77 @@
-void send_thru_gsm(char *inputMessage, char *serverNumber)
+void send_thru_gsm(char *inputMessage, String serverNumber)
 {
-    char msgToSend[250];
-    int maxPhoneNum = 15;
-    char sendingNumber[15];
+  char msgToSend[250];
+  int maxPhoneNum = 15;
+  char sendingNumber[15];
 
-    String smsCMD = ("AT+CMGS=");
-    String quote = ("\"");
-    String CR = ("\r");
-    String response;
+  String smsCMD = ("AT+CMGS=");
+  String quote = ("\"");
+  String CR = ("\r");
+  String response;
 
-    //inputMessage
-    for (int i = 0; i < 168; i++)
+  //inputMessage
+  for (int i = 0; i < 168; i++)
+  {
+    msgToSend[i] = (uint8_t)'0';
+  }
+  for (int i = 0; i < 168; i++)
+  {
+    msgToSend[i] = (uint8_t)inputMessage[i];
+  }
+  
+  /*
+  //serverNumber
+  for (int i = 0; i < maxPhoneNum; i++)
+  {
+    sendingNumber[i] = (uint8_t)'0';
+  }
+  for (int i = 0; i < maxPhoneNum; i++)
+  {
+    sendingNumber[i] = (uint8_t)serverNumber[i];
+  }
+  */
+
+  GSMSerial.write("AT+CMGF=1\r");
+  delay(500);
+
+  String rawMsg = smsCMD + quote + serverNumber + quote + CR;
+  Serial.println(rawMsg);
+  rawMsg.toCharArray(msgToSend, 250);
+  //strncat(msgToSend, inputMessage, 168);
+  Serial.print("Sending to '");
+  Serial.print(get_serverNum_from_flashMem());
+  Serial.print("': ");
+  Serial.println(inputMessage);  //print to send data
+
+  String reply;
+
+  for (int i = 0; i < 3; i++)
+  {
+    gsmSerialFlush();
+    GSMSerial.write(msgToSend); //AT+CMGS="639XXXXXXXXX"\r
+    reply = readGSMSerial();
+    if (isResponse(reply, ">"))
     {
-        msgToSend[i] = (uint8_t)'0';
-    }
-    for (int i = 0; i < 168; i++)
-    {
-        msgToSend[i] = (uint8_t)inputMessage[i];
-    }
-    //serverNumber
-    for (int i = 0; i < maxPhoneNum; i++)
-    {
-        sendingNumber[i] = (uint8_t)'0';
-    }
-    for (int i = 0; i < maxPhoneNum; i++)
-    {
-        sendingNumber[i] = (uint8_t)serverNumber[i];
-    }
-
-    GSMSerial.write("AT+CMGF=1\r");
-    delay(500);
-
-    String rawMsg = smsCMD + quote + serverNumber + quote + CR;
-    rawMsg.toCharArray(msgToSend, 250);
-    //strncat(msgToSend, inputMessage, 168);
-    Serial.print("Sending to '");
-    Serial.print(get_serverNum_from_flashMem());
-    Serial.println("': ");
-    //Serial.println(inputMessage);  //print to send data
-
-    String reply;
-
-    for (int i =0; i<3; i++)
-    {
-      gsmSerialFlush();
-      GSMSerial.write(msgToSend); //AT+CMGS="639XXXXXXXXX"\r
-      reply = readGSMSerial();
-      if (isResponse(reply, ">"))
+      //Serial.println(msgToSend);
+      GSMSerial.write(inputMessage);
+      readGSMSerial();
+      GSMSerial.write(26); //ctrl Z
+      //delay(5000);
+      response = readGSMSerial();
+      if (checkOkError(response) == 0)
       {
-        //Serial.println(msgToSend);
-        GSMSerial.write(inputMessage);
-        readGSMSerial();
-        GSMSerial.write(26); //ctrl Z
-        //delay(5000);
-        response = readGSMSerial();
-        if (checkOkError(response) == 0)
-        {
-          Serial.println("Message sent!");
-          break;
-        }
-        else
-        {
-          Serial.println("Sending message failed.");
-          Serial.println(response);
-        }
+        Serial.println("Message sent!");
+        break;
       }
-      else continue;
-
+      else
+      {
+        Serial.println("Sending message failed.");
+        Serial.println(response);
+      }
     }
+    else
+      continue;
+  }
 }
 
 String getCSQ()
@@ -76,27 +80,26 @@ String getCSQ()
   String atReply;
   String csqval;
   int counter = 0;
-  
+
   do
   {
     atReply = gsmCommand("AT\r");
     //Serial.println("AT");
-  }
-  while ((checkOkError(atReply) < 0) && (counter++ < 10));
-  
+  } while ((checkOkError(atReply) < 0) && (counter++ < 10));
+
   csqResponse = gsmCommand("AT+CSQ\r");
   if (checkOkError(csqResponse) == 0)
   {
     //Serial.println(csqResponse);
-    csqval = csqResponse.substring(csqResponse.indexOf("+CSQ: ")+6, csqResponse.indexOf(","));
+    csqval = csqResponse.substring(csqResponse.indexOf("+CSQ: ") + 6, csqResponse.indexOf(","));
   }
   else
   {
     csqval = '99';
   }
-  Serial.println(gsmReadMessage());
+  // Serial.println(gsmReadMessage());
   //gsmDeleteReadSmsInbox();
-  return csqval;  
+  return csqval;
 }
 
 void gsmHangup()
@@ -113,8 +116,8 @@ String gsmReadMessage()
   char str[1000];
   int i = 0;
   response = gsmCommand("AT+CMGR=1\r");
-  response.toCharArray(str,1000);
-  char *token = strtok(str,"\r");
+  response.toCharArray(str, 1000);
+  char *token = strtok(str, "\r");
   while (token != NULL)
   {
     if (i == 2) //third entry
@@ -125,7 +128,7 @@ String gsmReadMessage()
     token = strtok(NULL, "\r");
     i++;
   }
-  if (isResponse(message,"password"))
+  if (isResponse(message, "password"))
   {
     Serial.println("Valid message received.");
   }
@@ -153,7 +156,7 @@ void gsmManualNetworkConnect()
 
 int checkOkError(String response)
 {
-  if (isResponse(response,"OK"))
+  if (isResponse(response, "OK"))
   {
     //Serial.println("OK received!");
     return 0;
@@ -184,7 +187,7 @@ bool isResponse(String response, String keyword)
 String gsmCommand(char *command)
 {
   String response;
-  
+
   gsmSerialFlush();
   GSMSerial.write(command);
   response = readGSMSerial();
@@ -195,7 +198,7 @@ String readGSMSerial()
 {
   String response;
   int timeout = 0;
-  while (!GSMSerial.available() && timeout<1000)
+  while (!GSMSerial.available() && timeout < 1000)
   {
     delay(10);
     timeout++;
@@ -209,7 +212,7 @@ String readGSMSerial()
 
 void gsmSerialFlush()
 {
-  while(GSMSerial.available() > 0)
+  while (GSMSerial.available() > 0)
   {
     char t = GSMSerial.read();
   }
@@ -217,72 +220,72 @@ void gsmSerialFlush()
 
 void updateSerial()
 {
-    delay(500);
-    while (Serial.available())
-    {
-        GSMSerial.write(Serial.read()); //Forward what Serial received to Software Serial Port
-    }
-    while (GSMSerial.available())
-    {
-        Serial.write(GSMSerial.read()); //Forward what Software Serial received to Serial Port
-    }
+  delay(500);
+  while (Serial.available())
+  {
+    GSMSerial.write(Serial.read()); //Forward what Serial received to Software Serial Port
+  }
+  while (GSMSerial.available())
+  {
+    Serial.write(GSMSerial.read()); //Forward what Software Serial received to Serial Port
+  }
 }
 
 void sleepGSM()
 {
-    //the module enters sleep mode after 5 seconds of inactivity
-    GSMSerial.write("AT+CSCLK=2\r");
-    delay(50);
-    // updateSerial();
-    Serial.println("GSM going to sleep!");
+  //the module enters sleep mode after 5 seconds of inactivity
+  GSMSerial.write("AT+CSCLK=2\r");
+  delay(50);
+  // updateSerial();
+  Serial.println("GSM going to sleep!");
 }
 
 void wakeGSM()
 {
-    // delay(1000);
-    GSMSerial.write("AT\r");
-    delay(50);
-    //disable sleep mode
-    GSMSerial.write("AT+CSCLK=0\r");
-    delay(500);
-    Serial.println("GSM is alive!");
+  // delay(1000);
+  GSMSerial.write("AT\r");
+  delay(50);
+  //disable sleep mode
+  GSMSerial.write("AT+CSCLK=0\r");
+  delay(500);
+  Serial.println("GSM is alive!");
 }
 
 // here to process incoming serial data after a terminator received
 void process_data(const char *data)
 {
-    // for now just display it
-    // (but you could compare it to some value, convert to an integer, etc.)
-    Serial.println(data);
+  // for now just display it
+  // (but you could compare it to some value, convert to an integer, etc.)
+  Serial.println(data);
 } // end of process_data
 
 void processIncomingByte(const byte inByte)
 {
-    static char input_line[MAX_INPUT];
-    static unsigned int input_pos = 0;
+  static char input_line[MAX_INPUT];
+  static unsigned int input_pos = 0;
 
-    switch (inByte)
-    {
+  switch (inByte)
+  {
 
-    case '\n':                     // end of text
-        input_line[input_pos] = 0; // terminating null byte
+  case '\n':                   // end of text
+    input_line[input_pos] = 0; // terminating null byte
 
-        // terminator reached! process input_line here ...
-        process_data(input_line);
+    // terminator reached! process input_line here ...
+    process_data(input_line);
 
-        // reset buffer for next time
-        input_pos = 0;
-        break;
+    // reset buffer for next time
+    input_pos = 0;
+    break;
 
-    case '\r': // discard carriage return
-        break;
+  case '\r': // discard carriage return
+    break;
 
-    default:
-        // keep adding if not full ... allow for terminating null byte
-        if (input_pos < (MAX_INPUT - 1))
-            input_line[input_pos++] = inByte;
-        break;
+  default:
+    // keep adding if not full ... allow for terminating null byte
+    if (input_pos < (MAX_INPUT - 1))
+      input_line[input_pos++] = inByte;
+    break;
 
-    } // end of switch
+  } // end of switch
 
 } // end of processIncomingByte
