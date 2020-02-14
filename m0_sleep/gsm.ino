@@ -1,73 +1,51 @@
 void send_thru_gsm(char *inputMessage, String serverNumber)
 {
   char msgToSend[250];
-  int maxPhoneNum = 15;
-  char sendingNumber[15];
+  char atCmgsNo[250];
+  String incomingData = String(inputMessage);
+  incomingData.replace("\r", "");
+  incomingData.toCharArray(msgToSend, 250);
 
   String smsCMD = ("AT+CMGS=");
   String quote = ("\"");
   String CR = ("\r");
   String response;
-
-  //inputMessage
-  for (int i = 0; i < 168; i++)
-  {
-    msgToSend[i] = (uint8_t)'0';
-  }
-  for (int i = 0; i < 168; i++)
-  {
-    msgToSend[i] = (uint8_t)inputMessage[i];
-  }
-  
-  /*
-  //serverNumber
-  for (int i = 0; i < maxPhoneNum; i++)
-  {
-    sendingNumber[i] = (uint8_t)'0';
-  }
-  for (int i = 0; i < maxPhoneNum; i++)
-  {
-    sendingNumber[i] = (uint8_t)serverNumber[i];
-  }
-  */
+  String reply;
 
   GSMSerial.write("AT+CMGF=1\r");
   delay(500);
 
   String rawMsg = smsCMD + quote + serverNumber + quote + CR;
   Serial.println(rawMsg);
-  rawMsg.toCharArray(msgToSend, 250);
-  //strncat(msgToSend, inputMessage, 168);
+  rawMsg.toCharArray(atCmgsNo, 250);
   Serial.print("Sending to '");
   Serial.print(get_serverNum_from_flashMem());
   Serial.print("': ");
-  Serial.println(inputMessage);  //print to send data
-
-  String reply;
+  Serial.println(msgToSend); //print to send data
 
   for (int i = 0; i < 3; i++)
   {
     gsmSerialFlush();
-    GSMSerial.write(msgToSend); //AT+CMGS="639XXXXXXXXX"\r
+    GSMSerial.write(atCmgsNo); //AT+CMGS="639XXXXXXXXX"\r
     reply = readGSMSerial();
     if (isResponse(reply, ">"))
     {
-      //Serial.println(msgToSend);
-      GSMSerial.write(inputMessage);
-      readGSMSerial();
-      GSMSerial.write(26); //ctrl Z
-      //delay(5000);
-      response = readGSMSerial();
-      if (checkOkError(response) == 0)
-      {
-        Serial.println("Message sent!");
-        break;
-      }
-      else
-      {
-        Serial.println("Sending message failed.");
-        Serial.println(response);
-      }
+      //Serial.println(atCmgsNo);
+    GSMSerial.write(msgToSend); //message to send
+    readGSMSerial();
+    GSMSerial.write(26); //ctrl Z
+    //delay(5000);
+    response = readGSMSerial();
+    if (checkOkError(response) == 0)
+    {
+      Serial.println("Message sent!");
+      break;
+    }
+    else
+    {
+      Serial.println("Sending message failed.");
+      Serial.println(response);
+    }
     }
     else
       continue;

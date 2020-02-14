@@ -61,11 +61,9 @@ void SERCOM1_Handler()
   Serial2.IrqHandler();
 }
 
-//test GSM testMessage
+//Server number
 // char serverNumber[15] = "639954645704";
-char serverNumber[15] = "639175972526";
-// char testMessage[168] = "Test of char message";
-char testMessage[168] = "adfbsddfbsdfbsdfbsdfbsdfhbfauhadldfvkjdcvludfvbkjdfb78342u32hh2eu232md2i3i3ho2hr823i2nd2h2oe92832nfu2hefh3h8f29e0f239298ef9e8928ehf928h2098e208ehh02e";
+String serverNumber = ("639175972526");
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
