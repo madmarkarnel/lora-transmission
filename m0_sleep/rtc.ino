@@ -81,7 +81,7 @@ void getAtcommand()
   }
   else if (command == "H")
   {
-    Serial.println(cmd_from_flashMem());
+    Serial.println(stationName_from_flashMem());
     build_message();
   }
   else if (command == "D")
@@ -137,7 +137,7 @@ void getAtcommand()
   else if (command == "X")
   {
     Serial.println("waiting fo LoRa data. . .");
-    receive_lora_data(1);
+    receive_lora_data(get_logger_version());
   }
   else if (command == "E")
   {
@@ -176,6 +176,16 @@ void getAtcommand()
   {
     Serial.print("RSSI: ");
     Serial.println(get_rssi());
+  }
+  else if (command == "N")
+  {
+    Serial.println("MADTB*VOLT:12.33*200214111000");
+    char toParse[200];
+    Serial.setTimeout(15000);
+    Serial.println("Insert String to be parsed: ");
+    String fromUser = Serial.readStringUntil('\n');
+    fromUser.toCharArray(toParse, 200);
+    Serial.println(parse_voltage(toParse));
   }
   else if (command == "G")
   {
@@ -220,6 +230,7 @@ void printMenu()
   Serial.println(F("[K] Print 'server number' from flash memory"));
   Serial.println(F("[L] Change 'server number' from flash memory"));
   Serial.println(F("[M] Print LoRa rssi values."));
+  Serial.println(F("[N] Parse data from user"));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));
@@ -479,122 +490,122 @@ void setAlarmEvery30(int alarmSET)
   DateTime now = rtc.now(); //get the current date-time
   switch (alarmSET)
   {
-    case 0:
+  case 0:
+  {
+    // Serial.println("set 0/30 . . .");
+    if ((now.minute() >= 0) && (now.minute() <= 29))
     {
-      // Serial.println("set 0/30 . . .");
-      if ((now.minute() >= 0) && (now.minute() <= 29))
-      {
-        store_rtc = 30;
-      }
-      else if ((now.minute() >= 30) && (now.minute() <= 59))
-      {
-        store_rtc = 0;
-      }
-      enable_rtc_interrupt();
-      break;
+      store_rtc = 30;
     }
-    case 1:
+    else if ((now.minute() >= 30) && (now.minute() <= 59))
     {
-      // Serial.println("set 5/35 . . .");
-      if ((now.minute() >= 0) && (now.minute() <= 34))
-      {
-        store_rtc = 35;
-      }
-      else if ((now.minute() >= 35) && (now.minute() <= 59))
-      {
-        store_rtc = 5;
-      }
-      enable_rtc_interrupt();
-      break;
+      store_rtc = 0;
     }
-    case 2:
+    enable_rtc_interrupt();
+    break;
+  }
+  case 1:
+  {
+    // Serial.println("set 5/35 . . .");
+    if ((now.minute() >= 0) && (now.minute() <= 34))
     {
-      // Serial.println("set 10/40 . . .");
-      if ((now.minute() >= 0) && (now.minute() <= 39))
-      {
-        store_rtc = 40;
-      }
-      else if ((now.minute() >= 40) && (now.minute() <= 59))
-      {
-        store_rtc = 10;
-      }
-      enable_rtc_interrupt();
-      break;
+      store_rtc = 35;
     }
-    case 3:
+    else if ((now.minute() >= 35) && (now.minute() <= 59))
     {
-      // Serial.println("set 15/45 . . .");
-      if ((now.minute() >= 0) && (now.minute() <= 44))
-      {
-        store_rtc = 45;
-      }
-      else if ((now.minute() >= 45) && (now.minute() <= 59))
-      {
-        store_rtc = 15;
-      }
-      enable_rtc_interrupt();
-      break;
+      store_rtc = 5;
     }
-    case 4:
+    enable_rtc_interrupt();
+    break;
+  }
+  case 2:
+  {
+    // Serial.println("set 10/40 . . .");
+    if ((now.minute() >= 0) && (now.minute() <= 39))
     {
-      //set every 10 minutes interval
-      if ((now.minute() >= 0) && (now.minute() <= 9))
-      {
-        store_rtc = 10;
-      }
-      else if ((now.minute() >= 10) && (now.minute() <= 19))
-      {
-        store_rtc = 20;
-      }
-      else if ((now.minute() >= 20) && (now.minute() <= 29))
-      {
-        store_rtc = 30;
-      }
-      else if ((now.minute() >= 30) && (now.minute() <= 39))
-      {
-        store_rtc = 40;
-      }
-      else if ((now.minute() >= 40) && (now.minute() <= 49))
-      {
-        store_rtc = 50;
-      }
-      else if ((now.minute() >= 50) && (now.minute() <= 59))
-      {
-        store_rtc = 0;
-      }
-      enable_rtc_interrupt();
-      break;
+      store_rtc = 40;
     }
-    case 5:
+    else if ((now.minute() >= 40) && (now.minute() <= 59))
     {
-      //set every 15 minutes interval
-      if ((now.minute() >= 5) && (now.minute() <= 14))
-      {
-        store_rtc = 15;
-      }
-      else if ((now.minute() >= 15) && (now.minute() <= 24))
-      {
-        store_rtc = 25;
-      }
-      else if ((now.minute() >= 25) && (now.minute() <= 34))
-      {
-        store_rtc = 35;
-      }
-      else if ((now.minute() >= 35) && (now.minute() <= 44))
-      {
-        store_rtc = 45;
-      }
-      else if ((now.minute() >= 45) && (now.minute() <= 54))
-      {
-        store_rtc = 55;
-      }
-      else if ((now.minute() >= 55) && (now.minute() <= 4))
-      {
-        store_rtc = 5;
-      }
-      enable_rtc_interrupt();
-      break;
-    } 
+      store_rtc = 10;
+    }
+    enable_rtc_interrupt();
+    break;
+  }
+  case 3:
+  {
+    // Serial.println("set 15/45 . . .");
+    if ((now.minute() >= 0) && (now.minute() <= 44))
+    {
+      store_rtc = 45;
+    }
+    else if ((now.minute() >= 45) && (now.minute() <= 59))
+    {
+      store_rtc = 15;
+    }
+    enable_rtc_interrupt();
+    break;
+  }
+  case 4:
+  {
+    //set every 10 minutes interval
+    if ((now.minute() >= 0) && (now.minute() <= 9))
+    {
+      store_rtc = 10;
+    }
+    else if ((now.minute() >= 10) && (now.minute() <= 19))
+    {
+      store_rtc = 20;
+    }
+    else if ((now.minute() >= 20) && (now.minute() <= 29))
+    {
+      store_rtc = 30;
+    }
+    else if ((now.minute() >= 30) && (now.minute() <= 39))
+    {
+      store_rtc = 40;
+    }
+    else if ((now.minute() >= 40) && (now.minute() <= 49))
+    {
+      store_rtc = 50;
+    }
+    else if ((now.minute() >= 50) && (now.minute() <= 59))
+    {
+      store_rtc = 0;
+    }
+    enable_rtc_interrupt();
+    break;
+  }
+  case 5:
+  {
+    //set every 15 minutes interval
+    if ((now.minute() >= 5) && (now.minute() <= 14))
+    {
+      store_rtc = 15;
+    }
+    else if ((now.minute() >= 15) && (now.minute() <= 24))
+    {
+      store_rtc = 25;
+    }
+    else if ((now.minute() >= 25) && (now.minute() <= 34))
+    {
+      store_rtc = 35;
+    }
+    else if ((now.minute() >= 35) && (now.minute() <= 44))
+    {
+      store_rtc = 45;
+    }
+    else if ((now.minute() >= 45) && (now.minute() <= 54))
+    {
+      store_rtc = 55;
+    }
+    else if ((now.minute() >= 55) && (now.minute() <= 4))
+    {
+      store_rtc = 5;
+    }
+    enable_rtc_interrupt();
+    break;
+  }
   }
 }
 
