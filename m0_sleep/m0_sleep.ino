@@ -411,6 +411,12 @@ void receive_lora_data(uint8_t mode)
             count = 0;
           }
         }
+        else if (received, "VOLT")
+        {
+          /* parse voltage, MADTB*VOLT:12.33*200214111000 */
+          Serial.print("Received Voltage: ");
+          Serial.println(parse_voltage(received));
+        }
       }
       else
       {
@@ -431,7 +437,8 @@ void wake()
   detachInterrupt(RTCINTPIN);
 }
 
-// GATEWAY*RSSI,MAR,MARTA,,,MARTB,,,*200212141406
+// GATEWAY*RSSI,MAD,MADTA,rssi,voltage,MADTB,,,*200212141406
+// main logger name, MARTA, MARTB, . . .
 char *get_rssi()
 {
   char nRssi[200];
@@ -440,7 +447,7 @@ char *get_rssi()
   readTimeStamp();
 
   strncpy(nRssi, "GATEWAY*RSSI,", 13);
-  strncat(nRssi, cmd_from_flashMem(), 6);
+  strncat(nRssi, stationName_from_flashMem(), 6);
   strncat(nRssi, ",", 1);
   strncat(nRssi, tx_rssi, 16);
   strncat(nRssi, ",", 1);
@@ -450,7 +457,7 @@ char *get_rssi()
   return nRssi;
 }
 
-char *cmd_from_flashMem()
+char *stationName_from_flashMem()
 {
   String get_cmd;
   char new_cmd[10];
@@ -485,7 +492,7 @@ void build_message()
   for (int i = 0; i < DATALEN; i++)
     dataToSend[i] = 0;
   // strncpy((dataToSend), (sensCommand.stationName), (10));
-  strncpy((dataToSend), (cmd_from_flashMem()), (10));
+  strncpy((dataToSend), (stationName_from_flashMem()), (10));
   strncat(dataToSend, "W", 1);
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, temp, sizeof(temp));
@@ -523,7 +530,7 @@ char *read_batt_vol(uint8_t ver)
   readTimeStamp();
 
   strncpy(voltMessage, ">>", 2);
-  strncat(voltMessage, cmd_from_flashMem(), 10);
+  strncat(voltMessage, stationName_from_flashMem(), 10);
   strncat(voltMessage, "*VOLT:", 7);
   strncat(voltMessage, volt, sizeof(volt));
   strncat(voltMessage, "*", 1);
@@ -710,12 +717,12 @@ void no_data_from_senslope(uint8_t mode)
 
   if (mode == 1)
   {
-    strncpy((streamBuffer), (cmd_from_flashMem()), (10));
+    strncpy((streamBuffer), (stationName_from_flashMem()), (10));
   }
   else
   {
     strncpy(streamBuffer, ">>", 2);
-    strncat((streamBuffer), (cmd_from_flashMem()), (10));
+    strncat((streamBuffer), (stationName_from_flashMem()), (10));
   }
 
   strncat(streamBuffer, "*NODATAFROMSENSLOPE*", 22);
@@ -844,4 +851,32 @@ void send_rain_tips()
   delay(100);
   send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
   // delay(50);
+}
+
+char *parse_voltage(char *toParse)
+{
+  int i = 0;
+  char final_volt[200];
+  String parse_volt;
+
+  //MADTB*VOLT:12.33*200214111000
+  char *buff = strtok(toParse, ":");
+  while (buff != 0)
+  {
+    char *separator = strchr(buff, '*');
+    if (separator != 0)
+    {
+      *separator = 0;
+      if (i == 1)
+      {
+        parse_volt = buff;
+        // Serial.println(parse_volt);
+      }
+      i++;
+    }    
+   buff = strtok(0, ":");
+  }
+  parse_volt.toCharArray(final_volt, 200);
+  Serial.println(final_volt);
+  return buff;
 }
