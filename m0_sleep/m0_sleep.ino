@@ -553,10 +553,11 @@ float BatteryVoltage(uint8_t ver)
   }
   else
   {
-    //Voltage Divider 310k ; 100k ; 13.53
+    //Voltage Divider 1M ; 100k ;
     measuredvbat = analogRead(VBATEXT);
-    measuredvbat *= 12.34;
-    measuredvbat /= 1024.0;
+    measuredvbat *= 3.3;    // reference voltage
+    measuredvbat /= 1024.0; // adc max count
+    measuredvbat *= 11.0;    // (100k+1M)/100k
   }
   return measuredvbat;
 }
