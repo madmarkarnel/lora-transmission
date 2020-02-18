@@ -175,7 +175,7 @@ void getAtcommand()
   else if (command == "M")
   {
     Serial.print("RSSI: ");
-    Serial.println(get_rssi());
+    Serial.println(tx_RSSI);
   }
   else if (command == "N")
   {
@@ -606,6 +606,36 @@ void setAlarmEvery30(int alarmSET)
     enable_rtc_interrupt();
     break;
   }
+  case 6:
+  {
+    //set every 10 minutes interval
+    if ((now.minute() >= 0) && (now.minute() <= 9))
+    {
+      store_rtc = 10;
+    }
+    else if ((now.minute() >= 10) && (now.minute() <= 19))
+    {
+      store_rtc = 20;
+    }
+    else if ((now.minute() >= 20) && (now.minute() <= 29))
+    {
+      store_rtc = 30;
+    }
+    else if ((now.minute() >= 30) && (now.minute() <= 39))
+    {
+      store_rtc = 40;
+    }
+    else if ((now.minute() >= 40) && (now.minute() <= 49))
+    {
+      store_rtc = 50;
+    }
+    else if ((now.minute() >= 50) && (now.minute() <= 59))
+    {
+      store_rtc = 0;
+    }
+    enable_rtc_interrupt();
+    break;
+  }  
   }
 }
 

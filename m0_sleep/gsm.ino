@@ -16,14 +16,14 @@ void send_thru_gsm(char *inputMessage, String serverNumber)
   delay(500);
 
   String rawMsg = smsCMD + quote + serverNumber + quote + CR;
-  Serial.println(rawMsg);
+  // Serial.println(rawMsg);
   rawMsg.toCharArray(atCmgsNo, 250);
   Serial.print("Sending to '");
   Serial.print(get_serverNum_from_flashMem());
   Serial.print("': ");
   Serial.println(msgToSend); //print to send data
 
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 2; i++)
   {
     gsmSerialFlush();
     GSMSerial.write(atCmgsNo); //AT+CMGS="639XXXXXXXXX"\r
@@ -176,7 +176,7 @@ String readGSMSerial()
 {
   String response;
   int timeout = 0;
-  while (!GSMSerial.available() && timeout < 1000)
+  while (!GSMSerial.available() && timeout < 500)
   {
     delay(10);
     timeout++;
