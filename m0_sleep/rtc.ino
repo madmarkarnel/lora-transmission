@@ -15,7 +15,8 @@ void getAtcommand()
   do
   {
     serial_line = Serial.readStringUntil('\r\n');
-  } while (serial_line == "");
+  }
+  while (serial_line == "");
   serial_line.toUpperCase();
   serial_line.replace("\r", "");
 
@@ -651,4 +652,27 @@ void enable_rtc_interrupt()
     Serial.println(store_rtc);
   }
   readTimeStamp();
+}
+
+bool isChangeParam()
+{
+  String serial_line;
+  unsigned long serStart = millis();
+
+  Serial.println("Enter C to change:");
+  do
+  {
+    serial_line = Serial.readStringUntil('\r\n');
+  }
+  while ((serial_line == "") && ((millis() - serStart) < 10000));
+  serial_line.toUpperCase();
+  serial_line.replace("\r", "");
+  if (serial_line == "C")
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
 }
