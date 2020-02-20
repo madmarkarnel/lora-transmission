@@ -78,7 +78,33 @@ void getAtcommand()
   }
   else if (command == "C")
   {
-    setAlarmInterval();
+    if (alarmFromFlashMem() == 0)
+    {
+      Serial.println("Alarm every 00 and 30 minutes.");
+    }
+    else if (alarmFromFlashMem() == 1)
+    {
+      Serial.println("Alarm every 05 and 35 minutes.");
+    }
+    else if (alarmFromFlashMem() == 2)
+    {
+      Serial.println("Alarm every 10 and 40 minutes.");
+    }
+    else if (alarmFromFlashMem() == 3)
+    {
+      Serial.println("Alarm every 15 and 45 minutes.");
+    }
+    else if (alarmFromFlashMem() == 4)
+    {
+      Serial.println("Alarm every 10 minutes.");
+    }
+    else if (alarmFromFlashMem() == 5)
+    {
+      Serial.println("Alarm every 5,15,25. . . minutes.");
+    }
+    if (isChangeParam())
+      setAlarmInterval();
+    Serial.readStringUntil('\r\n');
   }
   else if (command == "H")
   {
@@ -162,7 +188,11 @@ void getAtcommand()
   }
   else if (command == "J")
   {
-    setLoggerVersion();
+    Serial.print("Logger version: ");
+    Serial.println(get_logger_version());
+    if (isChangeParam())
+      setLoggerVersion();
+    Serial.readStringUntil('\r\n');
   }
   else if (command == "K")
   {
@@ -171,7 +201,8 @@ void getAtcommand()
   }
   else if (command == "L")
   {
-    changeServerNumber();
+    if (isChangeParam())
+      changeServerNumber();
   }
   else if (command == "M")
   {
@@ -206,7 +237,14 @@ void getAtcommand()
   else if (command == "Z")
   {
     //do something
-    changeSensCommand();
+    Serial.print("Current command: ");
+    sensCommand = passCommand.read();
+    Serial.println(sensCommand.senslopeCommand);
+    Serial.print("Sensor Name: ");
+    Serial.println(sensCommand.stationName);
+    if (isChangeParam())
+      changeSensCommand();
+    Serial.readStringUntil('\r\n');
   }
   else
   {
@@ -673,6 +711,8 @@ bool isChangeParam()
   }
   else
   {
+    printMenu();
+    Serial.println("Change cancelled. Reselect."); 
     return false;
   }
 }
