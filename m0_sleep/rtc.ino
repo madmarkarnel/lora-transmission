@@ -49,33 +49,6 @@ void getAtcommand()
   {
     get_Due_Data(get_logger_version());
   }
-  else if (command == "B")
-  {
-    if (alarmFromFlashMem() == 0)
-    {
-      Serial.println("Alarm every 00 and 30 minutes.");
-    }
-    else if (alarmFromFlashMem() == 1)
-    {
-      Serial.println("Alarm every 05 and 35 minutes.");
-    }
-    else if (alarmFromFlashMem() == 2)
-    {
-      Serial.println("Alarm every 10 and 40 minutes.");
-    }
-    else if (alarmFromFlashMem() == 3)
-    {
-      Serial.println("Alarm every 15 and 45 minutes.");
-    }
-    else if (alarmFromFlashMem() == 4)
-    {
-      Serial.println("Alarm every 10 minutes.");
-    }
-    else if (alarmFromFlashMem() == 5)
-    {
-      Serial.println("Alarm every 5,15,25. . . minutes.");
-    }
-  }
   else if (command == "C")
   {
     if (alarmFromFlashMem() == 0)
@@ -116,19 +89,17 @@ void getAtcommand()
     Serial.print("RTC temperature: ");
     Serial.println(readTemp());
   }
-  else if (command == "R")
-  {
-    readTimeStamp();
-    Serial.print("Timestamp: ");
-    Serial.println(Ctimestamp);
-  }
   else if (command == "?")
   {
     printMenu();
   }
   else if (command == "S")
   {
-    setupTime();
+    readTimeStamp();
+    Serial.print("Timestamp: ");
+    Serial.println(Ctimestamp);
+    if (isChangeParam())
+        setupTime();
   }
   else if (command == "O")
   {
@@ -181,11 +152,6 @@ void getAtcommand()
     build_message();
     send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
   }
-  else if (command == "I")
-  {
-    Serial.print("Logger version: ");
-    Serial.println(get_logger_version());
-  }
   else if (command == "J")
   {
     Serial.print("Logger version: ");
@@ -194,13 +160,10 @@ void getAtcommand()
       setLoggerVersion();
     Serial.readStringUntil('\r\n');
   }
-  else if (command == "K")
+  else if (command == "L")
   {
     Serial.print("Server Number: ");
     Serial.println(get_serverNum_from_flashMem());
-  }
-  else if (command == "L")
-  {
     if (isChangeParam())
       changeServerNumber();
   }
@@ -226,14 +189,6 @@ void getAtcommand()
     Serial.println(BatteryVoltage(get_logger_version()));
     Serial.println(read_batt_vol(get_logger_version()));
   }
-  else if (command == "Y")
-  {
-    Serial.print("Current command: ");
-    sensCommand = passCommand.read();
-    Serial.println(sensCommand.senslopeCommand);
-    Serial.print("Sensor Name: ");
-    Serial.println(sensCommand.stationName);
-  }
   else if (command == "Z")
   {
     //do something
@@ -257,29 +212,24 @@ void printMenu()
   Serial.println(F("-------------------------------------"));
   Serial.println(F("[?] Print this menu"));
   Serial.println(F("[A] Sample sensor data"));
-  Serial.println(F("[B] Print sending interval settings"));
   Serial.println(F("[C] Change LoRa sending time."));
   Serial.println(F("[D] Read RTC temperature."));
   Serial.println(F("[E] Exit Debug mode."));
   Serial.println(F("[F] Print data to send. (rain)"));
   Serial.println(F("[G] Print input voltage"));
   Serial.println(F("[H] Print station name from flash memory."));
-  Serial.println(F("[I] Print logger version from flash memory"));
   Serial.println(F("[J] Change logger version from flash memory"));
-  Serial.println(F("[K] Print 'server number' from flash memory"));
   Serial.println(F("[L] Change 'server number' from flash memory"));
   Serial.println(F("[M] Print LoRa rssi values."));
   Serial.println(F("[N] Parse data from user"));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));
-  Serial.println(F("[R] Read Timestamp."));
   Serial.println(F("[S] Set date and time."));
   Serial.println(F("[U] Send rain tips."));
   Serial.println(F("[V] Sleep GSM"));
   Serial.println(F("[W] Wake GSM"));
   Serial.println(F("[X] wait for Lora data"));
-  Serial.println(F("[Y] Print SENSLOPE command."));
   Serial.println(F("[Z] Change SENSLOPE command."));
   Serial.println(F("-------------------------------------"));
 }
