@@ -178,7 +178,7 @@ void setup()
   // delay(100);
   // send_thru_gsm("GSM Alive!", "639954645704");
 
-  Serial.println("Press '?' to go DEBUG mode!");
+  Serial.println("Press 'C' to go DEBUG mode!");
   unsigned long serStart = millis();
   while (serial_flag == 0)
   {

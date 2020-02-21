@@ -49,7 +49,7 @@ void getAtcommand()
   {
     get_Due_Data(get_logger_version());
   }
-  else if (command == "C")
+  else if (command == "D")
   {
     if (alarmFromFlashMem() == 0)
     {
@@ -84,12 +84,12 @@ void getAtcommand()
     Serial.println(stationName_from_flashMem());
     build_message();
   }
-  else if (command == "D")
+  else if (command == "B")
   {
     Serial.print("RTC temperature: ");
     Serial.println(readTemp());
   }
-  else if (command == "?")
+  else if (command == "C")
   {
     printMenu();
   }
@@ -147,7 +147,7 @@ void getAtcommand()
     rtc.clearINTStatus(); // needed to re-trigger rtc
     debug_flag = 0;
   }
-  else if (command == "F")
+  else if (command == "L")
   {
     build_message();
     send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
@@ -160,7 +160,7 @@ void getAtcommand()
       setLoggerVersion();
     Serial.readStringUntil('\r\n');
   }
-  else if (command == "L")
+  else if (command == "F")
   {
     Serial.print("Server Number: ");
     Serial.println(get_serverNum_from_flashMem());
@@ -210,16 +210,16 @@ void getAtcommand()
 void printMenu()
 {
   Serial.println(F("-------------------------------------"));
-  Serial.println(F("[?] Print this menu"));
+  Serial.println(F("[C] Print this menu"));
   Serial.println(F("[A] Sample sensor data"));
-  Serial.println(F("[C] Change LoRa sending time."));
-  Serial.println(F("[D] Read RTC temperature."));
+  Serial.println(F("[B] Read RTC temperature."));
+  Serial.println(F("[D] Change LoRa sending time."));
   Serial.println(F("[E] Exit Debug mode."));
-  Serial.println(F("[F] Print data to send. (rain)"));
+  Serial.println(F("[F] Change 'server number' from flash memory"));
   Serial.println(F("[G] Print input voltage"));
   Serial.println(F("[H] Print station name from flash memory."));
   Serial.println(F("[J] Change logger version from flash memory"));
-  Serial.println(F("[L] Change 'server number' from flash memory"));
+  Serial.println(F("[L] Print data to send. (rain)"));
   Serial.println(F("[M] Print LoRa rssi values."));
   Serial.println(F("[N] Parse data from user"));
   Serial.println(F("[O] Read GSM CSQ."));
