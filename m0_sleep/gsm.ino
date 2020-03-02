@@ -212,21 +212,23 @@ void updateSerial()
 void sleepGSM()
 {
   //the module enters sleep mode after 5 seconds of inactivity
-  GSMSerial.write("AT+CSCLK=2\r");
-  delay(50);
-  // updateSerial();
-  Serial.println("GSM going to sleep!");
+  String response;
+  response = gsmCommand("AT+CSCLK=2\r");
+  if (checkOkError(response) == 0)
+  {
+    Serial.println("GSM going to sleep!");
+  }
 }
 
 void wakeGSM()
 {
-  // delay(1000);
-  GSMSerial.write("AT\r");
-  delay(50);
-  //disable sleep mode
-  GSMSerial.write("AT+CSCLK=0\r");
-  delay(500);
-  Serial.println("GSM is alive!");
+  String response;
+  gsmCommand("AT\r");
+  response = gsmCommand("AT+CSCLK=0\r");
+  if (checkOkError(response) == 0)
+  {
+    Serial.println("GSM is alive!");
+  }
 }
 
 // here to process incoming serial data after a terminator received
