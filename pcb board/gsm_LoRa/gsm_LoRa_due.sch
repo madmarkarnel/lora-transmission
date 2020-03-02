@@ -7532,7 +7532,7 @@ Distributor Buerklin, 11G810</description>
 <part name="SOLAR" library="con-molex" library_urn="urn:adsk.eagle:library:165" deviceset="22-23-2021" device=""/>
 <part name="POWER" library="con-molex" library_urn="urn:adsk.eagle:library:165" deviceset="22-23-2021" device=""/>
 <part name="TRIGGER" library="con-molex" library_urn="urn:adsk.eagle:library:165" deviceset="22-23-2021" device=""/>
-<part name="BATT" library="con-molex" library_urn="urn:adsk.eagle:library:165" deviceset="22-23-2021" device=""/>
+<part name="BATTERY" library="con-molex" library_urn="urn:adsk.eagle:library:165" deviceset="22-23-2021" device=""/>
 <part name="C8" library="eagle-ltspice" library_urn="urn:adsk.eagle:library:217" deviceset="C" device="C0603" package3d_urn="urn:adsk.eagle:package:13262/1"/>
 <part name="U$12" library="microbuilder" deviceset="GND" device=""/>
 <part name="S1" library="switch" library_urn="urn:adsk.eagle:library:380" deviceset="255SB" device="" package3d_urn="urn:adsk.eagle:package:27679/1"/>
@@ -7699,11 +7699,11 @@ Distributor Buerklin, 11G810</description>
 <instance part="TRIGGER" gate="-2" x="119.38" y="36.54" smashed="yes">
 <attribute name="NAME" x="121.92" y="35.778" size="1.524" layer="95"/>
 </instance>
-<instance part="BATT" gate="-1" x="36.62" y="205.42" smashed="yes" rot="R180">
+<instance part="BATTERY" gate="-1" x="36.62" y="205.42" smashed="yes" rot="R180">
 <attribute name="NAME" x="34.08" y="206.182" size="1.524" layer="95" rot="R180"/>
 <attribute name="VALUE" x="37.382" y="204.023" size="1.778" layer="96" rot="R180"/>
 </instance>
-<instance part="BATT" gate="-2" x="36.62" y="207.96" smashed="yes" rot="R180">
+<instance part="BATTERY" gate="-2" x="36.62" y="207.96" smashed="yes" rot="R180">
 <attribute name="NAME" x="34.08" y="208.722" size="1.524" layer="95" rot="R180"/>
 </instance>
 <instance part="C8" gate="G$1" x="10.06" y="77.44" smashed="yes" rot="R180">
@@ -7863,7 +7863,7 @@ Distributor Buerklin, 11G810</description>
 <label x="237.5" y="69" size="1.778" layer="95"/>
 </segment>
 <segment>
-<pinref part="BATT" gate="-1" pin="S"/>
+<pinref part="BATTERY" gate="-1" pin="S"/>
 <wire x1="39.16" y1="205.42" x2="44" y2="205.42" width="0.1524" layer="91"/>
 <wire x1="44" y1="205.42" x2="44" y2="205.5" width="0.1524" layer="91"/>
 <label x="42" y="205.5" size="1.778" layer="95"/>
@@ -8299,7 +8299,7 @@ Distributor Buerklin, 11G810</description>
 </segment>
 <segment>
 <pinref part="U$11" gate="G$1" pin="BATT"/>
-<pinref part="BATT" gate="-2" pin="S"/>
+<pinref part="BATTERY" gate="-2" pin="S"/>
 <wire x1="57.8" y1="208.38" x2="39.16" y2="208.38" width="0.1524" layer="91"/>
 <wire x1="39.16" y1="208.38" x2="39.16" y2="207.96" width="0.1524" layer="91"/>
 <label x="43.5" y="208" size="1.778" layer="95"/>
