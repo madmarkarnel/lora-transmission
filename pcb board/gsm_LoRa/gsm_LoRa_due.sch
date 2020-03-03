@@ -7483,6 +7483,162 @@ Distributor Buerklin, 11G810</description>
 </deviceset>
 </devicesets>
 </library>
+<library name="jump-0r-smd" urn="urn:adsk.eagle:library:251">
+<description>Soldering jumper and bridges</description>
+<packages>
+<package name="A0R-JMP" urn="urn:adsk.eagle:footprint:15382/1" library_version="2">
+<description>&lt;b&gt;0R Jumper Variant A&lt;/b&gt;&lt;p&gt;
+chip 0805</description>
+<wire x1="0.635" y1="1.26" x2="0.635" y2="0.44" width="0.1524" layer="51"/>
+<wire x1="-0.635" y1="1.26" x2="-0.635" y2="0.44" width="0.1524" layer="51"/>
+<smd name="1" x="0" y="1.7" dx="1.3" dy="1.5" layer="1" rot="R270"/>
+<smd name="2" x="0" y="0" dx="1.3" dy="1.5" layer="1" rot="R270"/>
+<smd name="3" x="0" y="-1.7" dx="1.3" dy="1.5" layer="1" rot="R270"/>
+<text x="-0.762" y="2.716" size="1.27" layer="25">&gt;NAME</text>
+<text x="-0.762" y="-3.986" size="1.27" layer="27">&gt;VALUE</text>
+<rectangle x1="-0.3235" y1="-0.5814" x2="0.3265" y2="0.8186" layer="51" rot="R270"/>
+<rectangle x1="-0.3235" y1="0.8918" x2="0.3265" y2="2.2918" layer="51" rot="R270"/>
+<rectangle x1="-0.1999" y1="-0.5001" x2="0.1999" y2="0.5001" layer="35"/>
+</package>
+<package name="B0R-JMP" urn="urn:adsk.eagle:footprint:15383/1" library_version="2">
+<description>&lt;b&gt;0R Jumper Variant B&lt;/b&gt;&lt;p&gt;
+chip 0805</description>
+<wire x1="-0.635" y1="-0.44" x2="-0.635" y2="-1.26" width="0.1524" layer="51"/>
+<wire x1="0.635" y1="-1.26" x2="0.635" y2="-0.44" width="0.1524" layer="51"/>
+<smd name="1" x="0" y="1.7" dx="1.3" dy="1.5" layer="1" rot="R270"/>
+<smd name="2" x="0" y="0" dx="1.3" dy="1.5" layer="1" rot="R270"/>
+<smd name="3" x="0" y="-1.7" dx="1.3" dy="1.5" layer="1" rot="R270"/>
+<text x="-0.762" y="2.716" size="1.27" layer="25">&gt;NAME</text>
+<text x="-0.762" y="-3.986" size="1.27" layer="27">&gt;VALUE</text>
+<rectangle x1="-0.3235" y1="-2.2814" x2="0.3265" y2="-0.8814" layer="51" rot="R270"/>
+<rectangle x1="-0.3235" y1="-0.8082" x2="0.3265" y2="0.5918" layer="51" rot="R270"/>
+</package>
+<package name="C0R-JMP" urn="urn:adsk.eagle:footprint:15384/1" library_version="2">
+<description>&lt;b&gt;0R Jumper Variant C&lt;/b&gt;&lt;p&gt;
+Solder type</description>
+<wire x1="0.61" y1="0.66" x2="0.61" y2="0.34" width="0.1524" layer="51"/>
+<wire x1="-0.61" y1="0.66" x2="-0.61" y2="0.34" width="0.1524" layer="51"/>
+<smd name="1" x="0" y="0.938" dx="0.8" dy="1" layer="1" roundness="100"/>
+<smd name="2" x="0" y="0" dx="1" dy="0.8" layer="1" roundness="50"/>
+<smd name="3" x="0" y="-0.938" dx="0.8" dy="1" layer="1" roundness="100"/>
+<text x="-0.762" y="2.716" size="1.27" layer="25">&gt;NAME</text>
+<text x="-0.762" y="-3.986" size="1.27" layer="27">&gt;VALUE</text>
+<rectangle x1="-0.3235" y1="-0.6814" x2="0.3265" y2="0.7186" layer="51" rot="R270"/>
+<rectangle x1="-0.3235" y1="0.2338" x2="0.3265" y2="1.6338" layer="51" rot="R270"/>
+</package>
+</packages>
+<packages3d>
+<package3d name="A0R-JMP" urn="urn:adsk.eagle:package:15385/1" type="box" library_version="2">
+<description>0R Jumper Variant A
+chip 0805</description>
+<packageinstances>
+<packageinstance name="A0R-JMP"/>
+</packageinstances>
+</package3d>
+<package3d name="B0R-JMP" urn="urn:adsk.eagle:package:15387/1" type="box" library_version="2">
+<description>0R Jumper Variant B
+chip 0805</description>
+<packageinstances>
+<packageinstance name="B0R-JMP"/>
+</packageinstances>
+</package3d>
+<package3d name="C0R-JMP" urn="urn:adsk.eagle:package:15386/1" type="box" library_version="2">
+<description>0R Jumper Variant C
+Solder type</description>
+<packageinstances>
+<packageinstance name="C0R-JMP"/>
+</packageinstances>
+</package3d>
+</packages3d>
+<symbols>
+<symbol name="0RJM" urn="urn:adsk.eagle:symbol:15380/1" library_version="2">
+<wire x1="0" y1="2.54" x2="0" y2="1.778" width="0.1524" layer="94"/>
+<wire x1="0" y1="0.508" x2="0" y2="-0.508" width="0.1524" layer="94"/>
+<wire x1="0" y1="-2.54" x2="0" y2="-1.778" width="0.1524" layer="94"/>
+<wire x1="-0.254" y1="1.524" x2="0.254" y2="1.524" width="0.508" layer="94" curve="-180" cap="flat"/>
+<wire x1="-0.254" y1="-1.016" x2="0.254" y2="-1.016" width="0.508" layer="94" curve="-180" cap="flat"/>
+<wire x1="0.254" y1="1.016" x2="-0.254" y2="1.016" width="0.508" layer="94" curve="-180" cap="flat"/>
+<wire x1="0.254" y1="-1.524" x2="-0.254" y2="-1.524" width="0.508" layer="94" curve="-180" cap="flat"/>
+<text x="2.54" y="1.27" size="1.778" layer="95">&gt;NAME</text>
+<pin name="2" x="2.54" y="0" visible="off" length="short" direction="pas" rot="R180"/>
+<pin name="1" x="0" y="2.54" visible="off" length="point" direction="pas" rot="R270"/>
+<pin name="3" x="0" y="-2.54" visible="off" length="point" direction="pas" rot="R90"/>
+</symbol>
+<symbol name="JMP" urn="urn:adsk.eagle:symbol:15381/1" library_version="2">
+<wire x1="0.762" y1="-0.254" x2="0.508" y2="-0.254" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="0.254" y1="-0.254" x2="-0.254" y2="-0.254" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="-0.508" y1="-0.254" x2="-0.762" y2="-0.254" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="0.762" y1="-2.286" x2="0.508" y2="-2.286" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="0.254" y1="-2.286" x2="-0.254" y2="-2.286" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="-0.508" y1="-2.286" x2="-0.762" y2="-2.286" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="0.762" y1="-0.254" x2="0.762" y2="-0.508" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="0.762" y1="-0.762" x2="0.762" y2="-1.016" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="0.762" y1="-1.524" x2="0.762" y2="-1.778" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="0.762" y1="-2.032" x2="0.762" y2="-2.286" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="-0.762" y1="-2.286" x2="-0.762" y2="-2.032" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="-0.762" y1="-1.778" x2="-0.762" y2="-1.524" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="-0.762" y1="-1.016" x2="-0.762" y2="-0.762" width="0.1524" layer="94" style="shortdash"/>
+<wire x1="-0.762" y1="-0.508" x2="-0.762" y2="-0.254" width="0.1524" layer="94" style="shortdash"/>
+<rectangle x1="-0.508" y1="-2.032" x2="0.508" y2="-0.508" layer="94" rot="R180"/>
+</symbol>
+</symbols>
+<devicesets>
+<deviceset name="0R-JUMP" urn="urn:adsk.eagle:component:15388/2" prefix="JMP" library_version="2">
+<description>&lt;b&gt;SMD 0R 0805 Jumper&lt;/b&gt;&lt;p&gt;</description>
+<gates>
+<gate name="-0R" symbol="0RJM" x="0" y="0" addlevel="always"/>
+<gate name="G$2" symbol="JMP" x="-2.54" y="2.54" addlevel="always"/>
+</gates>
+<devices>
+<device name="A" package="A0R-JMP">
+<connects>
+<connect gate="-0R" pin="1" pad="1"/>
+<connect gate="-0R" pin="2" pad="2"/>
+<connect gate="-0R" pin="3" pad="3"/>
+</connects>
+<package3dinstances>
+<package3dinstance package3d_urn="urn:adsk.eagle:package:15385/1"/>
+</package3dinstances>
+<technologies>
+<technology name="">
+<attribute name="POPULARITY" value="3" constant="no"/>
+</technology>
+</technologies>
+</device>
+<device name="B" package="B0R-JMP">
+<connects>
+<connect gate="-0R" pin="1" pad="1"/>
+<connect gate="-0R" pin="2" pad="2"/>
+<connect gate="-0R" pin="3" pad="3"/>
+</connects>
+<package3dinstances>
+<package3dinstance package3d_urn="urn:adsk.eagle:package:15387/1"/>
+</package3dinstances>
+<technologies>
+<technology name="">
+<attribute name="POPULARITY" value="0" constant="no"/>
+</technology>
+</technologies>
+</device>
+<device name="C" package="C0R-JMP">
+<connects>
+<connect gate="-0R" pin="1" pad="1"/>
+<connect gate="-0R" pin="2" pad="2"/>
+<connect gate="-0R" pin="3" pad="3"/>
+</connects>
+<package3dinstances>
+<package3dinstance package3d_urn="urn:adsk.eagle:package:15386/1"/>
+</package3dinstances>
+<technologies>
+<technology name="">
+<attribute name="POPULARITY" value="0" constant="no"/>
+</technology>
+</technologies>
+</device>
+</devices>
+</deviceset>
+</devicesets>
+</library>
 </libraries>
 <attributes>
 </attributes>
@@ -7538,6 +7694,13 @@ Distributor Buerklin, 11G810</description>
 <part name="S1" library="switch" library_urn="urn:adsk.eagle:library:380" deviceset="255SB" device="" package3d_urn="urn:adsk.eagle:package:27679/1"/>
 <part name="X1" library="con-molex" library_urn="urn:adsk.eagle:library:165" deviceset="22-23-2021" device=""/>
 <part name="SPI" library="Rembrandt Electronics - JST XH Connectors v1-0" deviceset="JST-XH-06-PIN" device="-ROUND-PAD"/>
+<part name="IC2" library="TPS22810TDBVRQ1" deviceset="TPS22810TDBVRQ1" device=""/>
+<part name="C9" library="eagle-ltspice" library_urn="urn:adsk.eagle:library:217" deviceset="C" device="C0603" package3d_urn="urn:adsk.eagle:package:13262/1"/>
+<part name="C10" library="eagle-ltspice" library_urn="urn:adsk.eagle:library:217" deviceset="C" device="C0603" package3d_urn="urn:adsk.eagle:package:13262/1"/>
+<part name="U$14" library="microbuilder" deviceset="GND" device=""/>
+<part name="U$15" library="microbuilder" deviceset="GND" device=""/>
+<part name="U$16" library="microbuilder" deviceset="GND" device=""/>
+<part name="GSM-PWR" library="jump-0r-smd" library_urn="urn:adsk.eagle:library:251" deviceset="0R-JUMP" device="B" package3d_urn="urn:adsk.eagle:package:15387/1"/>
 </parts>
 <sheets>
 <sheet>
@@ -7743,6 +7906,31 @@ Distributor Buerklin, 11G810</description>
 <instance part="SPI" gate="-6" x="-78.74" y="218.44" smashed="yes" rot="R180">
 <attribute name="NAME" x="-81.28" y="219.202" size="1.524" layer="95" rot="R180"/>
 </instance>
+<instance part="IC2" gate="G$1" x="-149.2" y="145.32" smashed="yes">
+<attribute name="NAME" x="-119.99" y="152.94" size="1.778" layer="95" align="center-left"/>
+<attribute name="VALUE" x="-119.99" y="150.4" size="1.778" layer="96" align="center-left"/>
+</instance>
+<instance part="C9" gate="G$1" x="-160.3" y="138.08" smashed="yes" rot="R180">
+<attribute name="NAME" x="-161.824" y="137.699" size="1.778" layer="95" rot="R180"/>
+<attribute name="VALUE" x="-161.824" y="142.779" size="1.778" layer="96" rot="R180"/>
+</instance>
+<instance part="C10" gate="G$1" x="-109.3" y="140.58" smashed="yes">
+<attribute name="NAME" x="-107.776" y="140.961" size="1.778" layer="95"/>
+<attribute name="VALUE" x="-107.776" y="135.881" size="1.778" layer="96"/>
+</instance>
+<instance part="U$14" gate="G$1" x="-109.41" y="131.76" smashed="yes">
+<attribute name="VALUE" x="-110.934" y="129.22" size="1.27" layer="96"/>
+</instance>
+<instance part="U$15" gate="G$1" x="-160.21" y="130.26" smashed="yes">
+<attribute name="VALUE" x="-161.734" y="127.72" size="1.27" layer="96"/>
+</instance>
+<instance part="U$16" gate="G$1" x="-154.91" y="128.26" smashed="yes">
+<attribute name="VALUE" x="-156.434" y="125.72" size="1.27" layer="96"/>
+</instance>
+<instance part="GSM-PWR" gate="-0R" x="-142.24" y="119.38" smashed="yes">
+<attribute name="NAME" x="-139.7" y="123.19" size="1.778" layer="95"/>
+</instance>
+<instance part="GSM-PWR" gate="G$2" x="-144.78" y="121.92" smashed="yes"/>
 </instances>
 <busses>
 </busses>
@@ -7926,6 +8114,24 @@ Distributor Buerklin, 11G810</description>
 <pinref part="SPI" gate="-6" pin="S"/>
 <wire x1="-76.2" y1="218.44" x2="-71.12" y2="218.44" width="0.1524" layer="91"/>
 <label x="-71.12" y="218.44" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="IC2" gate="G$1" pin="GND"/>
+<pinref part="U$16" gate="G$1" pin="GND"/>
+<wire x1="-149.2" y1="142.78" x2="-154.91" y2="142.78" width="0.1524" layer="91"/>
+<wire x1="-154.91" y1="142.78" x2="-154.91" y2="130.8" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="C10" gate="G$1" pin="2"/>
+<pinref part="U$14" gate="G$1" pin="GND"/>
+<wire x1="-109.3" y1="135.5" x2="-109.41" y2="135.5" width="0.1524" layer="91"/>
+<wire x1="-109.41" y1="135.5" x2="-109.41" y2="134.3" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="C9" gate="G$1" pin="1"/>
+<pinref part="U$15" gate="G$1" pin="GND"/>
+<wire x1="-160.3" y1="135.54" x2="-160.3" y2="132.8" width="0.1524" layer="91"/>
+<wire x1="-160.3" y1="132.8" x2="-160.21" y2="132.8" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="+3V3" class="0">
@@ -8170,6 +8376,25 @@ Distributor Buerklin, 11G810</description>
 <label x="222" y="125.5" size="1.778" layer="95"/>
 </segment>
 <segment>
+<pinref part="S1" gate="1" pin="P"/>
+<wire x1="66.84" y1="140.42" x2="66.84" y2="140.46" width="0.1524" layer="91"/>
+<wire x1="66.84" y1="140.46" x2="58.42" y2="140.46" width="0.1524" layer="91"/>
+<label x="58.42" y="140.46" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="C9" gate="G$1" pin="2"/>
+<wire x1="-160.3" y1="143.16" x2="-160.3" y2="145.64" width="0.1524" layer="91"/>
+<pinref part="IC2" gate="G$1" pin="VIN"/>
+<wire x1="-160.3" y1="145.64" x2="-149.2" y2="145.64" width="0.1524" layer="91"/>
+<wire x1="-149.2" y1="145.64" x2="-149.2" y2="145.32" width="0.1524" layer="91"/>
+<label x="-160.16" y="145.54" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="GSM-PWR" gate="-0R" pin="1"/>
+<wire x1="-142.24" y1="121.92" x2="-142.24" y2="127" width="0.1524" layer="91"/>
+<label x="-142.24" y="127" size="1.778" layer="95"/>
+</segment>
+<segment>
 <pinref part="Z1" gate="G$1" pin="K"/>
 <wire x1="-85.34" y1="150.52" x2="-85.34" y2="155.6" width="0.1524" layer="91"/>
 <pinref part="C7" gate="G$1" pin="1"/>
@@ -8189,18 +8414,6 @@ Distributor Buerklin, 11G810</description>
 <wire x1="-72.64" y1="150.52" x2="-72.64" y2="155.6" width="0.1524" layer="91"/>
 <junction x="-72.64" y="155.6"/>
 <label x="-85" y="155.5" size="1.778" layer="95"/>
-</segment>
-<segment>
-<pinref part="U$9" gate="G$1" pin="VCC"/>
-<wire x1="-7.7" y1="147.7" x2="-19" y2="147.7" width="0.1524" layer="91"/>
-<wire x1="-19" y1="147.7" x2="-19" y2="148" width="0.1524" layer="91"/>
-<label x="-19" y="148" size="1.778" layer="95"/>
-</segment>
-<segment>
-<pinref part="S1" gate="1" pin="P"/>
-<wire x1="66.84" y1="140.42" x2="66.84" y2="140.46" width="0.1524" layer="91"/>
-<wire x1="66.84" y1="140.46" x2="58.42" y2="140.46" width="0.1524" layer="91"/>
-<label x="58.42" y="140.46" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="TXD_GSM" class="0">
@@ -8355,6 +8568,49 @@ Distributor Buerklin, 11G810</description>
 <wire x1="157.6" y1="110.3" x2="147.32" y2="110.3" width="0.1524" layer="91"/>
 <wire x1="147.32" y1="110.3" x2="147.32" y2="111.76" width="0.1524" layer="91"/>
 <label x="147.32" y="111.76" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="GSMPWR" class="0">
+<segment>
+<pinref part="C10" gate="G$1" pin="1"/>
+<wire x1="-109.3" y1="145.32" x2="-109.3" y2="143.12" width="0.1524" layer="91"/>
+<pinref part="IC2" gate="G$1" pin="VOUT"/>
+<wire x1="-116.18" y1="145.32" x2="-109.3" y2="145.32" width="0.1524" layer="91"/>
+<label x="-109.22" y="144.78" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U$9" gate="G$1" pin="VCC"/>
+<wire x1="-7.7" y1="147.7" x2="-19" y2="147.7" width="0.1524" layer="91"/>
+<wire x1="-19" y1="147.7" x2="-19" y2="148" width="0.1524" layer="91"/>
+<label x="-19" y="148" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="GSMSW" class="0">
+<segment>
+<pinref part="IC2" gate="G$1" pin="EN/UVLO"/>
+<wire x1="-149.2" y1="140.24" x2="-149.2" y2="140.08" width="0.1524" layer="91"/>
+<wire x1="-149.2" y1="140.08" x2="-152.3" y2="140.08" width="0.1524" layer="91"/>
+<wire x1="-152.3" y1="140.08" x2="-152.3" y2="134.08" width="0.1524" layer="91"/>
+<wire x1="-152.3" y1="134.08" x2="-147.3" y2="134.08" width="0.1524" layer="91"/>
+<label x="-150.3" y="134.08" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="GSM-PWR" gate="-0R" pin="2"/>
+<wire x1="-139.7" y1="119.38" x2="-134.62" y2="119.38" width="0.1524" layer="91"/>
+<label x="-134.62" y="119.38" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="GSM_PSW" class="0">
+<segment>
+<pinref part="U$1" gate="G$1" pin="A2"/>
+<wire x1="157.6" y1="115.38" x2="147.32" y2="115.38" width="0.1524" layer="91"/>
+<wire x1="147.32" y1="115.38" x2="147.32" y2="116.84" width="0.1524" layer="91"/>
+<label x="147.32" y="116.84" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="GSM-PWR" gate="-0R" pin="3"/>
+<wire x1="-142.24" y1="116.84" x2="-142.24" y2="111.76" width="0.1524" layer="91"/>
+<label x="-142.24" y="111.76" size="1.778" layer="95"/>
 </segment>
 </net>
 </nets>
