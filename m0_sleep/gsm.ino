@@ -1,3 +1,19 @@
+String readGSMSerial(int maxResponseTime = 500)
+{
+  String response;
+  int timeout = 0;
+  while (!GSMSerial.available() && timeout < maxResponseTime)
+  {
+    delay(10);
+    timeout++;
+  }
+  if (GSMSerial.available())
+  {
+    response = GSMSerial.readString();
+  }
+  return response;
+}
+
 void send_thru_gsm(char *inputMessage, String serverNumber)
 {
   char msgToSend[250];
@@ -63,7 +79,7 @@ String getCSQ()
   {
     atReply = gsmCommand("AT\r");
     //Serial.println("AT");
-  } while ((checkOkError(atReply) < 0) && (counter++ < 10));
+  } while ((checkOkError(atReply) < 0) && (counter++ < 5));
 
   csqResponse = gsmCommand("AT+CSQ\r");
   if (checkOkError(csqResponse) == 0)
@@ -127,9 +143,21 @@ void gsmManualNetworkConnect()
 {
   String simNetwork = "GLOBE"; //or "SMART" , hardcoded
   String simNetCommand = "AT+COPS=1,1,\"" + simNetwork + "\"\r";
+  String response;
   char command[25];
   simNetCommand.toCharArray(command, 25);
-  gsmCommand(command);
+  gsmSerialFlush();
+  GSMSerial.write(command);
+  response = readGSMSerial(3000);
+  if (checkOkError(response) == 0)
+  {
+    Serial.println("OK received.");
+  }
+  else
+  {
+    Serial.println("Command failed.");
+    Serial.println(response);
+  }
 }
 
 int checkOkError(String response)
@@ -169,22 +197,6 @@ String gsmCommand(char *command)
   gsmSerialFlush();
   GSMSerial.write(command);
   response = readGSMSerial();
-  return response;
-}
-
-String readGSMSerial()
-{
-  String response;
-  int timeout = 0;
-  while (!GSMSerial.available() && timeout < 500)
-  {
-    delay(10);
-    timeout++;
-  }
-  if (GSMSerial.available())
-  {
-    response = GSMSerial.readString();
-  }
   return response;
 }
 
