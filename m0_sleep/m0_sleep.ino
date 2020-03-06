@@ -11,7 +11,7 @@ The circuit:
 * Arabica Board with rtc
 
 Created: 12 October 2019
-By : Mark Arnel B. Domingo
+By : MAD, TEP
 Modified: 23 January 2020
 */
 
@@ -37,22 +37,24 @@ Modified: 23 January 2020
 #define DUEBAUD 9600
 #define DUESerial Serial1
 #define RTCINTPIN 6
-#define DUETRIG 5 //moved to pin 5; default is pin 10 ; changed from pin 10 to pin 9
+#define DUETRIG   5 //moved to pin 5 - V5 logger; default is pin 10 ; changed from pin 10 to pin 9
 // #define DUETRIGOLD 10 //default is pin 10 ; changed from pin 10 to pin 9
-#define DEBUG 1
+#define DEBUG   1
 #define VBATPIN A7
 #define VBATEXT A5
+#define GSMRST  12
+#define GSMPWR  A2
 
 //for m0
-#define RFM95_CS 8
+#define RFM95_CS  8
 #define RFM95_RST 4
 #define RFM95_INT 3
 
-#define RF95_FREQ 433.0    // Change to 434.0 or other frequency, must match RX's freq!
-#define DATALEN 200        //max size of dummy length
+#define RF95_FREQ   433.0    // Change to 434.0 or other frequency, must match RX's freq!
+#define DATALEN     200        //max size of dummy length
 #define LORATIMEOUT 500000 //260 000 ~4 minutes 20 seconds timeout
-#define DUETIMEOUT 200000  //260 000 ~4 minutes 20 seconds timeout
-#define RAININT A4         //rainfall interrupt pin A4
+#define DUETIMEOUT  200000  //260 000 ~4 minutes 20 seconds timeout
+#define RAININT     A4         //rainfall interrupt pin A4
 
 //Pin 11-rx ; 10-tx (GSM comms)
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -155,13 +157,16 @@ void setup()
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(DUETRIG, OUTPUT);
+  pinMode(GSMPWR, OUTPUT);
+  pinMode(GSMRST, OUTPUT);
 
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(DUETRIG, LOW);
+  digitalWrite(GSMPWR, LOW);
+  digitalWrite(GSMRST, HIGH);
 
   //rain gauge interrupt
   attachInterrupt(RAININT, rainISR, FALLING);
-
   attachInterrupt(RTCINTPIN, wake, FALLING);
   init_Sleep(); //initialize sleep State working!!!!
 
@@ -171,12 +176,11 @@ void setup()
   //gsm initialization
   GSMSerial.write("AT\r");
   delay(100);
-  GSMSerial.write("ATE0\r"); //turn off echo
+  //turn off echo
+  GSMSerial.write("ATE0\r");
   delay(100);
+
   gsmManualNetworkConnect();
-  // GSMSerial.write("AT+CMGF=1\r");
-  // delay(100);
-  // send_thru_gsm("GSM Alive!", "639954645704");
 
   Serial.println("Press 'C' to go DEBUG mode!");
   unsigned long serStart = millis();
@@ -798,6 +802,26 @@ void turn_OFF_due(uint8_t mode)
   digitalWrite(DUETRIG, LOW);
   // }
   delay(100);
+}
+
+void resetGSM()
+{
+  digitalWrite(GSMRST, LOW);
+  delay(400);
+  digitalWrite(GSMRST, HIGH);
+  Serial.println("GSM resetting . . .");
+}
+
+void turn_ON_GSM()
+{
+  digitalWrite(GSMPWR, HIGH);
+  Serial.println("Turning ON GSM . . .");
+}
+
+void turn_OFF_GSM()
+{
+  digitalWrite(GSMPWR, LOW);
+  Serial.println("Turning OFF GSM . . .");
 }
 
 void rainISR()

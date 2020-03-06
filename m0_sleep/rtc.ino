@@ -81,8 +81,8 @@ void getAtcommand()
   }
   else if (command == "H")
   {
-    Serial.println(stationName_from_flashMem());
-    build_message();
+    // Serial.println(stationName_from_flashMem());
+    // build_message();
   }
   else if (command == "B")
   {
@@ -119,6 +119,10 @@ void getAtcommand()
   {
     resetRainTips();
   }
+  else if (command == "R")
+  {
+    resetGSM();
+  }
   else if (command == "U")
   {
     Serial.println("sending rain gauge data . . .");
@@ -126,11 +130,13 @@ void getAtcommand()
   }
   else if (command == "V")
   {
-    sleepGSM();
+    // sleepGSM();
+    turn_OFF_GSM();
   }
   else if (command == "W")
   {
-    wakeGSM();
+    // wakeGSM();
+    turn_ON_GSM();
   }
   else if (command == "X")
   {
@@ -169,18 +175,18 @@ void getAtcommand()
   }
   else if (command == "M")
   {
-    Serial.print("RSSI: ");
-    Serial.println(tx_RSSI);
+    // Serial.print("RSSI: ");
+    // Serial.println(tx_RSSI);
   }
   else if (command == "N")
   {
-    Serial.println("MADTB*VOLT:12.33*200214111000");
-    char toParse[200];
-    Serial.setTimeout(15000);
-    Serial.println("Insert String to be parsed: ");
-    String fromUser = Serial.readStringUntil('\n');
-    fromUser.toCharArray(toParse, 200);
-    Serial.println(parse_voltage(toParse));
+    // Serial.println("MADTB*VOLT:12.33*200214111000");
+    // char toParse[200];
+    // Serial.setTimeout(15000);
+    // Serial.println("Insert String to be parsed: ");
+    // String fromUser = Serial.readStringUntil('\n');
+    // fromUser.toCharArray(toParse, 200);
+    // Serial.println(parse_voltage(toParse));
   }
   else if (command == "G")
   {
@@ -210,22 +216,26 @@ void getAtcommand()
 void printMenu()
 {
   Serial.println(F("-------------------------------------"));
-  Serial.println(F("[C] Print this menu"));
   Serial.println(F("[A] Sample sensor data"));
   Serial.println(F("[B] Read RTC temperature."));
+  Serial.println(F("[C] Print this menu"));
   Serial.println(F("[D] Change LoRa sending time."));
   Serial.println(F("[E] Exit Debug mode."));
   Serial.println(F("[F] Change 'server number' from flash memory"));
   Serial.println(F("[G] Print input voltage"));
-  Serial.println(F("[H] Print station name from flash memory."));
+  Serial.println(F("[H] "));
+  Serial.println(F("[I] "));
   Serial.println(F("[J] Change logger version from flash memory"));
+  Serial.println(F("[K] "));
   Serial.println(F("[L] Print data to send. (rain)"));
-  Serial.println(F("[M] Print LoRa rssi values."));
-  Serial.println(F("[N] Parse data from user"));
+  Serial.println(F("[M] "));
+  Serial.println(F("[N] "));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));
+  Serial.println(F("[R] Reset GSM"));
   Serial.println(F("[S] Set date and time."));
+  Serial.println(F("[T] "));
   Serial.println(F("[U] Send rain tips."));
   Serial.println(F("[V] Sleep GSM"));
   Serial.println(F("[W] Wake GSM"));
