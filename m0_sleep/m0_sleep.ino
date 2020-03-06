@@ -806,6 +806,7 @@ void turn_OFF_due(uint8_t mode)
 
 void resetGSM()
 {
+  //added reset
   digitalWrite(GSMRST, LOW);
   delay(400);
   digitalWrite(GSMRST, HIGH);
