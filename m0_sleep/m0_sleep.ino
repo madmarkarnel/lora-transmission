@@ -37,24 +37,25 @@ Modified: 23 January 2020
 #define DUEBAUD 9600
 #define DUESerial Serial1
 #define RTCINTPIN 6
-#define DUETRIG   5 //moved to pin 5 - V5 logger; default is pin 10 ; changed from pin 10 to pin 9
+#define DUETRIG 5 //moved to pin 5 - V5 logger; default is pin 10 ; changed from pin 10 to pin 9
 // #define DUETRIGOLD 10 //default is pin 10 ; changed from pin 10 to pin 9
-#define DEBUG   1
+#define DEBUG 1
 #define VBATPIN A7
 #define VBATEXT A5
-#define GSMRST  12
-#define GSMPWR  A2
+#define GSMRST 12
+#define GSMPWR A2
 
 //for m0
-#define RFM95_CS  8
+#define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 3
 
-#define RF95_FREQ   433.0    // Change to 434.0 or other frequency, must match RX's freq!
-#define DATALEN     200        //max size of dummy length
+#define RF95_FREQ 433.0    // Change to 434.0 or other frequency, must match RX's freq!
+#define DATALEN 200        //max size of dummy length
 #define LORATIMEOUT 500000 //260 000 ~4 minutes 20 seconds timeout
-#define DUETIMEOUT  200000  //260 000 ~4 minutes 20 seconds timeout
-#define RAININT     A4         //rainfall interrupt pin A4
+#define LORATIMEOUTMODE2 700000
+#define DUETIMEOUT 200000  //260 000 ~4 minutes 20 seconds timeout
+#define RAININT A4         //rainfall interrupt pin A4
 
 //Pin 11-rx ; 10-tx (GSM comms)
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -119,10 +120,19 @@ typedef struct
 {
   boolean valid;
   char senslopeCommand[50];
-  char password[50];
   char stationName[10];
 } Senslope;
 Senslope sensCommand;
+
+typedef struct
+{
+  boolean valid;
+  char sensorA[20];
+  char sensorB[20];
+  char sensorC[20];
+  char sensorD[20];
+} SensorName;
+SensorName loggerName;
 
 typedef struct
 {
@@ -139,6 +149,7 @@ FlashStorage(alarmStorage, int);
 FlashStorage(loggerVersion, int);
 FlashStorage(passCommand, Senslope);
 FlashStorage(newServerNum, serNumber);
+FlashStorage(flashLoggerName, SensorName);
 
 void setup()
 {
@@ -180,7 +191,7 @@ void setup()
   GSMSerial.write("ATE0\r");
   delay(100);
 
-  gsmManualNetworkConnect();
+  // gsmManualNetworkConnect();
 
   Serial.println("Press 'C' to go DEBUG mode!");
   unsigned long serStart = millis();
@@ -212,12 +223,16 @@ void loop()
 
   if (OperationFlag)
   {
+    turn_ON_GSM();
+    gsmManualNetworkConnect();
     flashLed(LED_BUILTIN, 2, 50);
+
     if (get_logger_version() == 1)
     {
+      get_Due_Data(1);
+
       send_rain_tips();
       resetRainTips();
-      get_Due_Data(1);
 
       if (getSensorDataFlag == true && OperationFlag == true)
       {
@@ -225,12 +240,16 @@ void loop()
       }
 
       rf95.sleep();
-      // sleepGSM();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      turn_OFF_GSM();
     }
     else if (get_logger_version() == 2)
     {
       get_Due_Data(2); //tx of v5 logger
+    }
+    else if (get_logger_version() == 3)
+    {
+      // Gateway like mode
     }
     else
     {
@@ -417,7 +436,8 @@ void receive_lora_data(uint8_t mode)
           }
           Serial.println("Done getting LoRa data from transmitter.");
         }
-        else if (received, "VOLT")
+        else if (strstr(received, "*VOLT:"))
+        // else if (strstr(received, get_logger_B_from_flashMem() || get_logger_C_from_flashMem() ))
         {
           //print RSSI values
           tx_RSSI = (rf95.lastRssi(), DEC);
@@ -459,7 +479,7 @@ char get_rssi()
   old_rssi.toCharArray(convertRssi, 100);
   readTimeStamp();
 
-  String loggerName = String(stationName_from_flashMem());
+  String loggerName = String(get_logger_A_from_flashMem());
   loggerName.replace("\r", "");
   loggerName.remove(3);
   loggerName.toCharArray(logger_name, 200);
@@ -469,7 +489,7 @@ char get_rssi()
   strncpy(dataToSend, "GATEWAY*RSSI,", 13);
   strncat(dataToSend, logger_name, sizeof(logger_name));
   strncat(dataToSend, ",", 1);
-  strncat(dataToSend, stationName_from_flashMem(), 10);
+  strncat(dataToSend, get_logger_B_from_flashMem(), 20);
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, convertRssi, 100);
   strncat(dataToSend, ",", 1);
@@ -488,6 +508,39 @@ char *stationName_from_flashMem()
   get_cmd.replace("\r", "");
   get_cmd.toCharArray(new_cmd, 10);
   return new_cmd;
+}
+
+char *get_logger_A_from_flashMem()
+{
+  String getLoggerA;
+  char new_loggerA[10];
+  loggerName = flashLoggerName.read();
+  getLoggerA = loggerName.sensorA;
+  getLoggerA.replace("\r", "");
+  getLoggerA.toCharArray(new_loggerA, 10);
+  return new_loggerA;
+}
+
+char *get_logger_B_from_flashMem()
+{
+  String getLogger;
+  char new_logger[10];
+  loggerName = flashLoggerName.read();
+  getLogger = loggerName.sensorB;
+  getLogger.replace("\r", "");
+  getLogger.toCharArray(new_logger, 10);
+  return new_logger;
+}
+
+char *get_logger_C_from_flashMem()
+{
+  String getLogger;
+  char new_logger[10];
+  loggerName = flashLoggerName.read();
+  getLogger = loggerName.sensorC;
+  getLogger.replace("\r", "");
+  getLogger.toCharArray(new_logger, 10);
+  return new_logger;
 }
 
 String get_serverNum_from_flashMem()
@@ -514,7 +567,7 @@ void build_message()
   for (int i = 0; i < DATALEN; i++)
     dataToSend[i] = 0;
   // strncpy((dataToSend), (sensCommand.stationName), (10));
-  strncpy((dataToSend), (stationName_from_flashMem()), (10));
+  strncpy((dataToSend), (get_logger_A_from_flashMem()), (20));
   strncat(dataToSend, "W", 1);
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, temp, sizeof(temp));
@@ -557,7 +610,7 @@ char *read_batt_vol(uint8_t ver)
   }
   else
   {
-    strncpy(voltMessage, stationName_from_flashMem(), 10);
+    strncpy(voltMessage, get_logger_A_from_flashMem(), 20);
   }
   // strncpy(voltMessage, ">>", 2);
   // strncat(voltMessage, stationName_from_flashMem(), 10);
@@ -719,7 +772,7 @@ void get_Due_Data(uint8_t mode)
       {
         delay(500);
         send_thru_lora(read_batt_vol(mode));
-        delay(1000);  //needed for the gsm to wait until sending
+        delay(1000); //needed for the gsm to wait until sending
         send_thru_lora("STOPLORA");
       }
       Serial.println("Done getting DUE data!");
@@ -748,12 +801,12 @@ void no_data_from_senslope(uint8_t mode)
 
   if (mode == 1)
   {
-    strncpy((streamBuffer), (stationName_from_flashMem()), (10));
+    strncpy((streamBuffer), (get_logger_A_from_flashMem()), (20));
   }
   else
   {
     strncpy(streamBuffer, ">>", 2);
-    strncat((streamBuffer), (stationName_from_flashMem()), (10));
+    strncat((streamBuffer), (get_logger_A_from_flashMem()), (20));
   }
 
   strncat(streamBuffer, "*NODATAFROMSENSLOPE*", 22);
@@ -817,10 +870,12 @@ void turn_ON_GSM()
 {
   digitalWrite(GSMPWR, HIGH);
   Serial.println("Turning ON GSM . . .");
+  delay(1000);
 }
 
 void turn_OFF_GSM()
 {
+  delay(1000);
   digitalWrite(GSMPWR, LOW);
   Serial.println("Turning OFF GSM . . .");
 }

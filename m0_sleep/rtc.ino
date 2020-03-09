@@ -47,7 +47,10 @@ void getAtcommand()
   }
   else if (command == "A")
   {
+    turn_ON_GSM();
     get_Due_Data(get_logger_version());
+    gsmManualNetworkConnect();
+    turn_OFF_GSM();
   }
   else if (command == "D")
   {
@@ -178,15 +181,28 @@ void getAtcommand()
     // Serial.print("RSSI: ");
     // Serial.println(tx_RSSI);
   }
+  else if (command == "T")
+  {
+    Serial.println("MADTB*VOLT:12.33*200214111000");
+    char toParse[200];
+    Serial.setTimeout(15000);
+    Serial.println("Insert data to be parsed: ");
+    String fromUser = Serial.readStringUntil('\n');
+    fromUser.toCharArray(toParse, 200);
+    Serial.println(parse_voltage(toParse));
+  }
   else if (command == "N")
   {
-    // Serial.println("MADTB*VOLT:12.33*200214111000");
-    // char toParse[200];
-    // Serial.setTimeout(15000);
-    // Serial.println("Insert String to be parsed: ");
-    // String fromUser = Serial.readStringUntil('\n');
-    // fromUser.toCharArray(toParse, 200);
-    // Serial.println(parse_voltage(toParse));
+    Serial.print("Sensor Name A: ");
+    Serial.println(get_logger_A_from_flashMem());
+    Serial.print("Sensor Name B: ");
+    Serial.println(get_logger_B_from_flashMem());
+    Serial.print("Sensor Name C: ");
+    Serial.println(get_logger_C_from_flashMem());
+    if (isChangeParam())
+      inputLoggerNames();
+    Serial.readStringUntil('\r\n');
+
   }
   else if (command == "G")
   {
@@ -201,8 +217,8 @@ void getAtcommand()
     Serial.print("Current command: ");
     sensCommand = passCommand.read();
     Serial.println(sensCommand.senslopeCommand);
-    Serial.print("Sensor Name: ");
-    Serial.println(sensCommand.stationName);
+    // Serial.print("Sensor Name: ");
+    // Serial.println(sensCommand.stationName);
     if (isChangeParam())
       changeSensCommand();
     Serial.readStringUntil('\r\n');
@@ -229,13 +245,13 @@ void printMenu()
   Serial.println(F("[K] "));
   Serial.println(F("[L] Print data to send. (rain)"));
   Serial.println(F("[M] "));
-  Serial.println(F("[N] "));
+  Serial.println(F("[N] Change datalogger names from memory."));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
   Serial.println(F("[Q] Reset rain tips."));
   Serial.println(F("[R] Reset GSM"));
   Serial.println(F("[S] Set date and time."));
-  Serial.println(F("[T] "));
+  Serial.println(F("[T] Parse voltage from remote logger."));
   Serial.println(F("[U] Send rain tips."));
   Serial.println(F("[V] Sleep GSM"));
   Serial.println(F("[W] Wake GSM"));
@@ -318,15 +334,33 @@ uint8_t alarmFromFlashMem()
 void changeSensCommand()
 {
   Serial.setTimeout(15000);
-  Serial.println("Insert command: ");
+  Serial.print("Insert DUE command: ");
   String dynaCommand = Serial.readStringUntil('\n');
-  // Serial.println(dynaCommand);
-  Serial.println("Insert sensor name: ");
-  String sensorName = Serial.readStringUntil('\n');
+  Serial.println(dynaCommand);
+  // Serial.print("Insert sensor name: ");
+  // String sensorName = Serial.readStringUntil('\n');
   // Serial.println(sensorName);
   dynaCommand.toCharArray(sensCommand.senslopeCommand, 50);
-  sensorName.toCharArray(sensCommand.stationName, 10);
+  // sensorName.toCharArray(sensCommand.stationName, 10);
   passCommand.write(sensCommand); //save to flash memory
+}
+
+void inputLoggerNames()
+{
+  Serial.setTimeout(20000);
+  Serial.print("Input name of SENSOR A: ");
+  String inputLoggerA = Serial.readStringUntil('\n');
+  Serial.println(inputLoggerA);
+  Serial.print("Input name of SENSOR B: ");
+  String inputLoggerB = Serial.readStringUntil('\n');
+  Serial.println(inputLoggerB);
+  Serial.print("Input name of SENSOR C: ");
+  String inputLoggerC = Serial.readStringUntil('\n');
+  Serial.println(inputLoggerC);
+  inputLoggerA.toCharArray(loggerName.sensorA, 10);
+  inputLoggerB.toCharArray(loggerName.sensorB, 10);
+  inputLoggerC.toCharArray(loggerName.sensorC, 10);
+  flashLoggerName.write(loggerName);
 }
 
 void changeServerNumber()
