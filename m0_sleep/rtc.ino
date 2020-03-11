@@ -143,6 +143,8 @@ void getAtcommand()
   }
   else if (command == "X")
   {
+    Serial.print("Datalogger Version: ");
+    Serial.println(get_logger_version());
     Serial.println("waiting fo LoRa data. . .");
     receive_lora_data(get_logger_version());
   }
@@ -231,7 +233,7 @@ void getAtcommand()
 
 void printMenu()
 {
-  Serial.println(F("-------------------------------------"));
+  Serial.println(F("-----------------------------------------------"));
   Serial.println(F("[A] Sample sensor data"));
   Serial.println(F("[B] Read RTC temperature."));
   Serial.println(F("[C] Print this menu"));
@@ -257,7 +259,7 @@ void printMenu()
   Serial.println(F("[W] Wake GSM"));
   Serial.println(F("[X] wait for Lora data"));
   Serial.println(F("[Z] Change SENSLOPE command."));
-  Serial.println(F("-------------------------------------"));
+  Serial.println(F("-----------------------------------------------"));
 }
 
 void print_rtcInterval()
@@ -278,9 +280,11 @@ void print_rtcInterval()
 void setLoggerVersion()
 {
   int version;
-  Serial.println("[0] Default LoRa transmitter for Raspberry Pi");
-  Serial.println("[1] V5 datalogger with GSM");
-  Serial.println("[2] For V5 datalogger remote transmitter");
+  Serial.println("[0] LoRa transmitter for Raspberry Pi");
+  Serial.println("[1] Version 5 datalogger LoRa with GSM");
+  Serial.println("[2] LoRa transmitter for version 5 datalogger");
+  Serial.println("[3] Gateway Mode with only ONE LoRa transmitter");
+  Serial.println("[4] Gateway Mode Datalogger");
   delay(1000);
   while (!Serial.available())
   {
