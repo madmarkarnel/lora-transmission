@@ -93,7 +93,7 @@ const unsigned int DEBOUNCE_TIME = 40; //40
 volatile float rainTips = 0.00;
 char sendRainTip[7] = "0.00";
 
-volatile bool rainFallFlag = false;  //rain tips
+volatile bool rainFallFlag = false; //rain tips
 volatile bool OperationFlag = false;
 bool getSensorDataFlag = false;
 
@@ -185,7 +185,7 @@ void setup()
 
   setAlarmEvery30(alarmFromFlashMem()); //alarm settings
   rf95.sleep();
-/*
+  /*
   //gsm initialization
   GSMSerial.write("AT\r");
   delay(100);
@@ -254,22 +254,20 @@ void loop()
       //only one trasmitter
       turn_ON_GSM();
 
-      if (getSensorDataFlag == true && OperationFlag == true)
-      {
-        receive_lora_data(1);
-      }
+      receive_lora_data(3);
+
       send_rain_tips();
       resetRainTips();
 
       rf95.sleep();
       attachInterrupt(RTCINTPIN, wake, FALLING);
-      turn_OFF_GSM();    
+      turn_OFF_GSM();
     }
     else if (get_logger_version() == 4)
     {
       // Gateway like mode
       turn_ON_GSM();
-      receive_lora_data(3);
+      receive_lora_data(4);
 
       send_rain_tips();
       resetRainTips();
@@ -472,21 +470,15 @@ void receive_lora_data(uint8_t mode)
             Serial.println(tx_RSSI);
           }
         }
+
         /*
         else if (received, "STOPLORA")
         {
-          Serial.println("Recieved STOP LoRa.");
+          // function is working as of 03-12-2020
           count++;
-          if (mode == 1 || mode == 3)
+          if( mode == 4)
           {
-            Serial.print("count: ");
-            Serial.println(count);
-            Serial.println("Recieved STOP LoRa.");
-            count = 0;
-            rcv_LoRa_flag = 1;
-          }
-          else
-          {        
+            Serial.println("Version 4: STOPLORA");
             if (count >= 2)
             {
               Serial.print("count: ");
@@ -495,77 +487,26 @@ void receive_lora_data(uint8_t mode)
               count = 0;
             }
           }
+          else
+          {
+            Serial.print("count: ");
+            Serial.println(count);
+            Serial.println("Recieved STOP LoRa.");
+            count = 0;
+            // rcv_LoRa_flag = 1;
+          }
         }
         */
-        // else if (received, (get_logger_B_from_flashMem() && "*VOLT:"))
-        // {
-        //   //recieved
-        //   Serial.print("Recieved sensor B: ");          
-        //   Serial.println(get_logger_B_from_flashMem());          
-        // }
-        // else if (received, (get_logger_C_from_flashMem() && "*VOLT:"))
-        // {
-        //   //recieved
-        //   Serial.print("Recieved sensor C: ");
-        //   Serial.println(get_logger_C_from_flashMem()); 
-        // }        
 
         else if (received, "*VOLT:")
         {
-          count2++;
-          Serial.print("counter: ");
-          Serial.println(count2);
-          /*
+          // mode 4
           if (mode == 4)
           {
-            if ((strstr(received, get_logger_B_from_flashMem())) && (tx_LoRa_flag == true))
-            {
-              Serial.println("Received from sensor B.");
-              //SENSOR B
-              tx_RSSI = (rf95.lastRssi(), DEC);
-              Serial.print("RSSI: ");
-              Serial.println(tx_RSSI);
-              // parse voltage, MADTB*VOLT:12.33*200214111000
-              Serial.print("Received Voltage: ");
-              Serial.println(parse_voltage(received));
-              tx_LoRa_flag = false;
-            }
+            count2++;
+            Serial.print("counter: ");
+            Serial.println(count2);
 
-            if ((strstr(received, get_logger_C_from_flashMem())) && (tx_LoRa_flag == false))
-            {
-              Serial.println("Received from sensor C.");
-              // SENSOR C
-              tx_RSSI_B = (rf95.lastRssi(), DEC);
-              Serial.print("RSSI: ");
-              Serial.println(tx_RSSI_B);
-              Serial.print("Received Voltage: ");
-              Serial.println(parse_voltage_B(received));
-
-              get_rssi(get_logger_version());
-              send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
-              delay(500);
-              rcv_LoRa_flag = 1;
-            }            
-          }
-          else if (mode == 1 || mode == 3)
-          {
-            // only ONE LoRa transmitter
-            tx_RSSI = (rf95.lastRssi(), DEC);
-            Serial.print("RSSI: ");
-            Serial.println(tx_RSSI);
-            //parse voltage, MADTB*VOLT:12.33*200214111000 
-            Serial.print("Received Voltage: ");
-            Serial.println(parse_voltage(received));
-
-            get_rssi(get_logger_version());
-            send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
-            delay(100);
-            rcv_LoRa_flag = 1;
-          }
-            */
-           
-          if (mode == 4)
-          {
             if (count2 == 1)
             {
               //SENSOR A
@@ -576,7 +517,7 @@ void receive_lora_data(uint8_t mode)
               Serial.print("Received Voltage: ");
               Serial.println(parse_voltage(received));
             }
-            else if (count2 >= 2)
+            else if (count2 == 2)
             {
               // SENSOR B
               tx_RSSI_B = (rf95.lastRssi(), DEC);
@@ -584,32 +525,29 @@ void receive_lora_data(uint8_t mode)
               Serial.println(tx_RSSI_B);
               Serial.print("Received Voltage: ");
               Serial.println(parse_voltage_B(received));
-              delay(200);
-
+              delay(500);
               get_rssi(get_logger_version());
+              delay(200);
               send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
               count2 = 0;
-              delay(500);
               rcv_LoRa_flag = 1;
             }
           }
-          else if (mode == 1 || mode == 3)
+          else
           {
-            //SENSOR A
+            // version 3 mode
             tx_RSSI = (rf95.lastRssi(), DEC);
             Serial.print("RSSI: ");
             Serial.println(tx_RSSI);
             //  parse voltage, MADTB*VOLT:12.33*200214111000 
             Serial.print("Received Voltage: ");
             Serial.println(parse_voltage(received));
-
+            delay(500);
             get_rssi(get_logger_version());
             send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
-            delay(500);
             rcv_LoRa_flag = 1;
           } 
-        }
-        
+        }        
       }
       else
       {
@@ -653,6 +591,8 @@ char get_rssi(uint8_t mode)
   loggerName.remove(3);
   loggerName.toCharArray(logger_name, 200);
 
+  // txVoltage[0] = '\0';
+  // txVoltageB[0] = '\0';
   for (int i = 0; i < 200; i++)
     dataToSend[i] = 0;
   strncpy(dataToSend, "GATEWAY*RSSI,", 13);
@@ -813,22 +753,22 @@ char *read_batt_vol(uint8_t ver)
 float BatteryVoltage(uint8_t ver)
 {
   float measuredvbat;
-  int vbatpin;
-  if (ver == 1 || ver == 3)
-  {
-    measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
-    measuredvbat *= 2;                  // we divided by 2, so multiply back
-    measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
-    measuredvbat /= 1024;               // convert to voltage
-  }
-  else
-  {
+  // int vbatpin;
+  // if (ver == 1)
+  // {
+  //   measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
+  //   measuredvbat *= 2;                  // we divided by 2, so multiply back
+  //   measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
+  //   measuredvbat /= 1024;               // convert to voltage
+  // }
+  // else
+  // {
     //Voltage Divider 1M ; 100k ;
     measuredvbat = analogRead(VBATEXT);
     measuredvbat *= 3.3;    // reference voltage
     measuredvbat /= 1024.0; // adc max count
     measuredvbat *= 11.0;   // (100k+1M)/100k
-  }
+  // }
   return measuredvbat;
 }
 
@@ -950,9 +890,9 @@ void get_Due_Data(uint8_t mode)
     {
       if (mode == 0 || mode == 2)
       {
-        delay(500);
+        delay(1000);
         send_thru_lora(read_batt_vol(mode));
-        delay(1000); //needed for the gsm to wait until sending
+        delay(1500); //needed for the gsm to wait until sending
         send_thru_lora("STOPLORA");
       }
       Serial.println("Done getting DUE data!");

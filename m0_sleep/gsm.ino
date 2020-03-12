@@ -47,21 +47,21 @@ void send_thru_gsm(char *inputMessage, String serverNumber)
     if (isResponse(reply, ">"))
     {
       //Serial.println(atCmgsNo);
-    GSMSerial.write(msgToSend); //message to send
-    readGSMSerial();
-    GSMSerial.write(26); //ctrl Z
-    //delay(5000);
-    response = readGSMSerial();
-    if (checkOkError(response) == 0)
-    {
-      Serial.println("Message sent!");
-      break;
-    }
-    else
-    {
-      Serial.println("Sending message failed.");
-      Serial.println(response);
-    }
+      GSMSerial.write(msgToSend); //message to send
+      readGSMSerial();
+      GSMSerial.write(26); //ctrl Z
+      //delay(5000);
+      response = readGSMSerial();
+      if (checkOkError(response) == 0)
+      {
+        Serial.println("Message sent!");
+        break;
+      }
+      else
+      {
+        Serial.println("Sending message failed.");
+        Serial.println(response);
+      }
     }
     else
       continue;
