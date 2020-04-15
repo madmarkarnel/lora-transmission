@@ -84,8 +84,12 @@ void getAtcommand()
   }
   else if (command == "H")
   {
-    // Serial.println(stationName_from_flashMem());
-    // build_message();
+    readTimeStamp();
+    char testMsg[200] = "Test messsage";
+    strncat(testMsg, ",", 1);
+    strncat(testMsg, Ctimestamp, 168);
+    send_thru_gsm(testMsg, get_serverNum_from_flashMem());
+    testMsg[0] = '\0';    
   }
   else if (command == "B")
   {
@@ -241,12 +245,12 @@ void printMenu()
   Serial.println(F("[E] Exit Debug mode."));
   Serial.println(F("[F] Change 'server number' from flash memory"));
   Serial.println(F("[G] Print input voltage"));
-  Serial.println(F("[H] "));
-  Serial.println(F("[I] "));
+  Serial.println(F("[H] Test GSM"));
+  // Serial.println(F("[I] "));
   Serial.println(F("[J] Change logger version from flash memory"));
-  Serial.println(F("[K] "));
+  // Serial.println(F("[K] "));
   Serial.println(F("[L] Print data to send. (rain)"));
-  Serial.println(F("[M] "));
+  // Serial.println(F("[M] "));
   Serial.println(F("[N] Change datalogger names from memory."));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
@@ -284,7 +288,9 @@ void setLoggerVersion()
   Serial.println("[1] Version 5 datalogger LoRa with GSM");
   Serial.println("[2] LoRa transmitter for version 5 datalogger");
   Serial.println("[3] Gateway Mode with only ONE LoRa transmitter");
-  Serial.println("[4] Gateway Mode Datalogger");
+  Serial.println("[4] Gateway Mode with TWO LoRa transmitter");
+  Serial.println("[5] Gateway Mode with THREE LoRa transmitter");
+  Serial.println("[6] LoRa transmitter for Raspberry Pi");
   delay(1000);
   while (!Serial.available())
   {

@@ -100,8 +100,8 @@ bool getSensorDataFlag = false;
 char station_name[6] = "MADTA";
 char Ctimestamp[13] = "";
 char command[30];
-char txVoltage[100];
-char txVoltageB[100];
+char txVoltage[100] = "0";
+char txVoltageB[100] = "0";
 
 unsigned long timestart = 0;
 uint8_t serial_flag = 0;
@@ -265,7 +265,7 @@ void loop()
     }
     else if (get_logger_version() == 4)
     {
-      // Gateway like mode
+      //Two transmitter
       turn_ON_GSM();
       receive_lora_data(4);
 
@@ -276,10 +276,36 @@ void loop()
       attachInterrupt(RTCINTPIN, wake, FALLING);
       turn_OFF_GSM();
     }
-    else
+    else if (get_logger_version() == 5)
+    {
+      // Three transmitter
+      turn_ON_GSM();
+      receive_lora_data(5);
+
+      send_rain_tips();
+      resetRainTips();
+
+      rf95.sleep();
+      attachInterrupt(RTCINTPIN, wake, FALLING);
+      turn_OFF_GSM();
+    }
+    else if (get_logger_version() == 6)
     {
       //default arabica LoRa transmitter
       get_Due_Data(0);
+    }
+    else
+    {
+      //default
+      turn_ON_GSM();
+      get_Due_Data(1);
+
+      send_rain_tips();
+      resetRainTips();
+
+      rf95.sleep();
+      attachInterrupt(RTCINTPIN, wake, FALLING);
+      turn_OFF_GSM();
     }
 
     getSensorDataFlag = false;
@@ -513,11 +539,53 @@ void receive_lora_data(uint8_t mode)
               tx_RSSI = (rf95.lastRssi(), DEC);
               Serial.print("RSSI: ");
               Serial.println(tx_RSSI);
-              //  parse voltage, MADTB*VOLT:12.33*200214111000 
+              //  parse voltage, MADTB*VOLT:12.33*200214111000
               Serial.print("Received Voltage: ");
               Serial.println(parse_voltage(received));
             }
             else if (count2 == 2)
+            {
+              // SENSOR B
+              tx_RSSI_B = (rf95.lastRssi(), DEC);
+              Serial.print("RSSI: ");
+              Serial.println(tx_RSSI_B);
+              Serial.print("Received Voltage: ");
+              Serial.println(parse_voltage_B(received));
+              delay(500);
+              get_rssi(get_logger_version());
+              delay(200);
+              send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
+              count2 = 0;
+              rcv_LoRa_flag = 1;
+            }
+          }
+          else if (mode == 5)
+          {
+            count2++;
+            Serial.print("counter: ");
+            Serial.println(count2);
+
+            if (count2 == 1)
+            {
+              //SENSOR A
+              tx_RSSI = (rf95.lastRssi(), DEC);
+              Serial.print("RSSI: ");
+              Serial.println(tx_RSSI);
+              //  parse voltage, MADTB*VOLT:12.33*200214111000
+              Serial.print("Received Voltage: ");
+              Serial.println(parse_voltage(received));
+            }
+            else if (count2 == 2)
+            {
+              //SENSOR A
+              tx_RSSI = (rf95.lastRssi(), DEC);
+              Serial.print("RSSI: ");
+              Serial.println(tx_RSSI);
+              //  parse voltage, MADTB*VOLT:12.33*200214111000
+              Serial.print("Received Voltage: ");
+              Serial.println(parse_voltage(received));
+            }
+            else if (count2 == 3)
             {
               // SENSOR B
               tx_RSSI_B = (rf95.lastRssi(), DEC);
@@ -539,15 +607,15 @@ void receive_lora_data(uint8_t mode)
             tx_RSSI = (rf95.lastRssi(), DEC);
             Serial.print("RSSI: ");
             Serial.println(tx_RSSI);
-            //  parse voltage, MADTB*VOLT:12.33*200214111000 
+            //  parse voltage, MADTB*VOLT:12.33*200214111000
             Serial.print("Received Voltage: ");
             Serial.println(parse_voltage(received));
             delay(500);
             get_rssi(get_logger_version());
             send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
             rcv_LoRa_flag = 1;
-          } 
-        }        
+          }
+        }
       }
       else
       {
@@ -763,11 +831,11 @@ float BatteryVoltage(uint8_t ver)
   // }
   // else
   // {
-    //Voltage Divider 1M ; 100k ;
-    measuredvbat = analogRead(VBATEXT);
-    measuredvbat *= 3.3;    // reference voltage
-    measuredvbat /= 1024.0; // adc max count
-    measuredvbat *= 11.0;   // (100k+1M)/100k
+  //Voltage Divider 1M ; 100k ;
+  measuredvbat = analogRead(VBATEXT);
+  measuredvbat *= 3.3;    // reference voltage
+  measuredvbat /= 1024.0; // adc max count
+  measuredvbat *= 11.0;   // (100k+1M)/100k
   // }
   return measuredvbat;
 }
@@ -989,16 +1057,15 @@ void resetGSM()
 void turn_ON_GSM()
 {
   digitalWrite(GSMPWR, HIGH);
-  delay(100);
+  Serial.println("Turning ON GSM . . .");
+  delay(500);
   //gsm initialization
   GSMSerial.write("AT\r");
-  delay(100);
+  delay(500);
   //turn off echo
   GSMSerial.write("ATE0\r");
-  delay(100);
+  delay(500);
   gsmManualNetworkConnect();
-
-  Serial.println("Turning ON GSM . . .");
   delay(500);
 }
 
