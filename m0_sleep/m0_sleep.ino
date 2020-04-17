@@ -65,7 +65,6 @@ void SERCOM1_Handler()
 }
 
 //Server number
-// char serverNumber[15] = "639954645704";
 String serverNumber = ("639175972526");
 
 // Singleton instance of the radio driver
@@ -84,8 +83,9 @@ char received[250];
 char streamBuffer[250]; //store message
 int customDueFlag = 0;  //for data gathering
 int sendToLoRa = 0;
-uint8_t tx_RSSI = 0;   //tx rssi
+uint8_t tx_RSSI = 0;   //tx rssi of sensor A
 uint8_t tx_RSSI_B = 0; //tx rssi of sensor B
+uint8_t tx_RSSI_C = 0; //tx rssi of sensor C
 
 //rain gauge
 static unsigned long last_interrupt_time = 0;
@@ -102,21 +102,13 @@ char Ctimestamp[13] = "";
 char command[30];
 char txVoltage[100] = "0";
 char txVoltageB[100] = "0";
+char txVoltageC[100] = "0";
 
 unsigned long timestart = 0;
 uint8_t serial_flag = 0;
 uint8_t debug_flag = 0;
 uint8_t rcv_LoRa_flag = 0;
 uint16_t store_rtc = 00; //store rtc alarm
-
-/**
- * gsm related variables
-*/
-char gsmReply[60];
-
-// how much serial data we expect before a newline
-//non blocking read function
-const unsigned int MAX_INPUT = 50;
 
 typedef struct
 {
@@ -181,9 +173,9 @@ void setup()
   //rain gauge interrupt
   attachInterrupt(RAININT, rainISR, FALLING);
   attachInterrupt(RTCINTPIN, wake, FALLING);
-  init_Sleep(); //initialize sleep State working!!!!
+  init_Sleep(); //initialize MCU sleep State working!!!!
 
-  setAlarmEvery30(alarmFromFlashMem()); //alarm settings
+  setAlarmEvery30(alarmFromFlashMem()); //rtc alarm settings
   rf95.sleep();
   /*
   //gsm initialization
@@ -294,9 +286,17 @@ void loop()
       //default arabica LoRa transmitter
       get_Due_Data(0);
     }
+    else if (get_logger_version() == 7)
+    {
+      // Sends rain gauge data via LoRa
+      get_Due_Data(0);
+      delay(1000);
+      build_message(1);
+      send_thru_lora(dataToSend);
+    }
     else
     {
-      //default
+      //default arQ like sending
       turn_ON_GSM();
       get_Due_Data(1);
 
@@ -333,11 +333,6 @@ void wakeAndSleep(uint8_t verSion)
   if (OperationFlag)
   {
     flashLed(LED_BUILTIN, 5, 100);
-    // build_message();
-    // delay(10);
-    // send_thru_gsm(dataToSend, serverNumber);
-    // delay(10);
-    // resetRainTips();
 
     if (verSion == 1)
     {
@@ -526,11 +521,10 @@ void receive_lora_data(uint8_t mode)
 
         else if (received, "*VOLT:")
         {
-          // mode 4
-          if (mode == 4)
+          if (mode == 4) // 2 LoRa transmitter
           {
             count2++;
-            Serial.print("counter: ");
+            Serial.print("recieved counter: ");
             Serial.println(count2);
 
             if (count2 == 1)
@@ -540,8 +534,9 @@ void receive_lora_data(uint8_t mode)
               Serial.print("RSSI: ");
               Serial.println(tx_RSSI);
               //  parse voltage, MADTB*VOLT:12.33*200214111000
-              Serial.print("Received Voltage: ");
-              Serial.println(parse_voltage(received));
+              parse_voltage(received).toCharArray(txVoltage, sizeof(txVoltage));
+              Serial.print("TX Voltage A: ");
+              Serial.println(txVoltage);
             }
             else if (count2 == 2)
             {
@@ -549,8 +544,9 @@ void receive_lora_data(uint8_t mode)
               tx_RSSI_B = (rf95.lastRssi(), DEC);
               Serial.print("RSSI: ");
               Serial.println(tx_RSSI_B);
-              Serial.print("Received Voltage: ");
-              Serial.println(parse_voltage_B(received));
+              parse_voltage(received).toCharArray(txVoltageB, sizeof(txVoltageB));
+              Serial.print("TX Voltage B: ");
+              Serial.println(txVoltageB);
               delay(500);
               get_rssi(get_logger_version());
               delay(200);
@@ -559,7 +555,7 @@ void receive_lora_data(uint8_t mode)
               rcv_LoRa_flag = 1;
             }
           }
-          else if (mode == 5)
+          else if (mode == 5) // 3 LoRa transmitter
           {
             count2++;
             Serial.print("counter: ");
@@ -571,29 +567,33 @@ void receive_lora_data(uint8_t mode)
               tx_RSSI = (rf95.lastRssi(), DEC);
               Serial.print("RSSI: ");
               Serial.println(tx_RSSI);
-              //  parse voltage, MADTB*VOLT:12.33*200214111000
-              Serial.print("Received Voltage: ");
-              Serial.println(parse_voltage(received));
+              // parse voltage, MADTB*VOLT:12.33*200214111000
+              parse_voltage(received).toCharArray(txVoltage, sizeof(txVoltage));
+              Serial.print("TX Voltage A: ");
+              Serial.println(txVoltage);
             }
             else if (count2 == 2)
             {
-              //SENSOR A
-              tx_RSSI = (rf95.lastRssi(), DEC);
+              //SENSOR B
+              tx_RSSI_B = (rf95.lastRssi(), DEC);
               Serial.print("RSSI: ");
               Serial.println(tx_RSSI);
               //  parse voltage, MADTB*VOLT:12.33*200214111000
-              Serial.print("Received Voltage: ");
-              Serial.println(parse_voltage(received));
+              parse_voltage(received).toCharArray(txVoltageB, sizeof(txVoltageB));
+              Serial.print("TX Voltage B: ");
+              Serial.println(txVoltageB);
             }
             else if (count2 == 3)
             {
-              // SENSOR B
-              tx_RSSI_B = (rf95.lastRssi(), DEC);
+              // SENSOR C
+              tx_RSSI_C = (rf95.lastRssi(), DEC);
               Serial.print("RSSI: ");
               Serial.println(tx_RSSI_B);
-              Serial.print("Received Voltage: ");
-              Serial.println(parse_voltage_B(received));
+              parse_voltage(received).toCharArray(txVoltageC, sizeof(txVoltageC));
+              Serial.print("TX Voltage C: ");
+              Serial.println(txVoltageC);
               delay(500);
+
               get_rssi(get_logger_version());
               delay(200);
               send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
@@ -643,15 +643,18 @@ void wake()
 
 // GATEWAY*RSSI,MAD,MADTA,rssi,voltage,MADTB,,,*200212141406
 // main logger name, MARTA, MARTB, . . .
-char get_rssi(uint8_t mode)
+void get_rssi(uint8_t mode)
 {
   char convertRssi[100];
   char convertRssiB[100];
+  char convertRssiC[100];
   char logger_name[200];
   String old_rssi = String(tx_RSSI);
   String old_rssi_B = String(tx_RSSI_B);
+  String old_rssi_C = String(tx_RSSI_C);
   old_rssi.toCharArray(convertRssi, 100);
   old_rssi_B.toCharArray(convertRssiB, 100);
+  old_rssi_C.toCharArray(convertRssiC, 100);
   readTimeStamp();
 
   String loggerName = String(get_logger_A_from_flashMem());
@@ -659,8 +662,6 @@ char get_rssi(uint8_t mode)
   loggerName.remove(3);
   loggerName.toCharArray(logger_name, 200);
 
-  // txVoltage[0] = '\0';
-  // txVoltageB[0] = '\0';
   for (int i = 0; i < 200; i++)
     dataToSend[i] = 0;
   strncpy(dataToSend, "GATEWAY*RSSI,", 13);
@@ -681,6 +682,21 @@ char get_rssi(uint8_t mode)
     strncat(dataToSend, ",", 1);
     strncat(dataToSend, txVoltageB, sizeof(txVoltageB)); //voltage working 02-17-2020
     // strncat(dataToSend, parse_voltage_B(received), sizeof(parse_voltage_B(received)));
+  }
+  if (mode == 5)
+  {
+    strncat(dataToSend, ",", 1);
+    strncat(dataToSend, get_logger_C_from_flashMem(), 20);
+    strncat(dataToSend, ",", 1);
+    strncat(dataToSend, convertRssiB, 100);
+    strncat(dataToSend, ",", 1);
+    strncat(dataToSend, txVoltageB, sizeof(txVoltageB)); //voltage working 02-17-2020
+    strncat(dataToSend, ",", 1);
+    strncat(dataToSend, get_logger_D_from_flashMem(), 20); //sensorD
+    strncat(dataToSend, ",", 1);
+    strncat(dataToSend, convertRssiC, 100);
+    strncat(dataToSend, ",", 1);
+    strncat(dataToSend, txVoltageC, sizeof(txVoltageC));
   }
   strncat(dataToSend, ",*", 2);
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
@@ -711,13 +727,13 @@ char *get_logger_A_from_flashMem()
 
 char *get_logger_B_from_flashMem()
 {
-  String getLogger;
-  char new_logger[10];
+  String getLoggerB;
+  char new_loggerB[10];
   loggerName = flashLoggerName.read();
-  getLogger = loggerName.sensorB;
-  getLogger.replace("\r", "");
-  getLogger.toCharArray(new_logger, 10);
-  return new_logger;
+  getLoggerB = loggerName.sensorB;
+  getLoggerB.replace("\r", "");
+  getLoggerB.toCharArray(new_loggerB, 10);
+  return new_loggerB;
 }
 
 char *get_logger_C_from_flashMem()
@@ -731,6 +747,17 @@ char *get_logger_C_from_flashMem()
   return new_loggerC;
 }
 
+char *get_logger_D_from_flashMem()
+{
+  String getLoggerD;
+  char new_loggerD[10];
+  loggerName = flashLoggerName.read();
+  getLoggerD = loggerName.sensorD;
+  getLoggerD.replace("\r", "");
+  getLoggerD.toCharArray(new_loggerD, 10);
+  return new_loggerD;
+}
+
 String get_serverNum_from_flashMem()
 {
   String flashNum;
@@ -740,7 +767,11 @@ String get_serverNum_from_flashMem()
   return flashNum;
 }
 
-void build_message()
+/**
+ * 0 - default for GSM sending
+ * 1 - send to LoRa with >> and << added to data
+*/
+void build_message(uint8_t sendTo)
 {
   char csq[5];
   char temp[6];
@@ -754,8 +785,18 @@ void build_message()
 
   for (int i = 0; i < DATALEN; i++)
     dataToSend[i] = 0;
-  // strncpy((dataToSend), (sensCommand.stationName), (10));
-  strncpy((dataToSend), (get_logger_A_from_flashMem()), (20));
+  /* MADTAW,32.00,0.00,0.82,99,200415171303 
+      station name, temperature, raintips, input voltage, gsm csq */
+  if (sendTo == 1)
+  {
+    strncpy(dataToSend, ">>", 2);
+    strncat((dataToSend), (get_logger_A_from_flashMem()), (20));
+  }
+  else
+  {
+    strncpy((dataToSend), (get_logger_A_from_flashMem()), (20));
+  }
+  // strncpy((dataToSend), (get_logger_A_from_flashMem()), (20));
   strncat(dataToSend, "W", 1);
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, temp, sizeof(temp));
@@ -767,8 +808,10 @@ void build_message()
   strncat(dataToSend, csq, sizeof(csq));
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
-  delay(10);
-  Serial.println(dataToSend);
+  if (sendTo == 1)
+  {
+    strncat(dataToSend, "<<", 2);
+  }
 }
 
 void flashLed(int pin, int times, int wait)
@@ -1104,58 +1147,15 @@ void resetRainTips()
   Serial.println(rainTips);
 }
 
-/**
- * main code
- * rain gauge
- * sensor
-*/
-void gateway_mode()
-{
-  if (OperationFlag)
-  {
-    // wakeGSM();
-    flashLed(LED_BUILTIN, 2, 50);
-    send_rain_tips();
-    resetRainTips();
-    get_Due_Data(1);
-
-    if (getSensorDataFlag == true && OperationFlag == true)
-    {
-      receive_lora_data(1);
-    }
-
-    rf95.sleep();
-    // sleepGSM();
-    attachInterrupt(RTCINTPIN, wake, FALLING);
-    OperationFlag = false;
-    getSensorDataFlag = false;
-  }
-
-  if (rainFallFlag)
-  {
-    flashLed(LED_BUILTIN, 1, 50);
-    attachInterrupt(RAININT, rainISR, FALLING); //re-enable rain gauge interrupt before going to sleep
-    rainFallFlag = false;
-  }
-
-  //real time clock alarm settings
-  setAlarmEvery30(alarmFromFlashMem());
-  delay(75);
-  rtc.clearINTStatus(); // needed to re-trigger rtc
-
-  attachInterrupt(RAININT, rainISR, FALLING);
-  attachInterrupt(RTCINTPIN, wake, FALLING);
-  sleepNow();
-}
-
 void send_rain_tips()
 {
-  build_message();
+  build_message(0);
   delay(100);
   send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
   // delay(50);
 }
 
+/*
 char *parse_voltage(char *toParse)
 {
   int i = 0;
@@ -1212,4 +1212,56 @@ char *parse_voltage_B(char *toParse)
   parse_volt.toCharArray(txVoltageB, sizeof(txVoltageB));
   Serial.println(final_volt);
   return buff;
+}
+
+char *parse_voltage(char *toParse)
+{
+  int i = 0;
+  char final_volt[200];
+  String parse_volt;
+
+  //MADTB*VOLT:12.33*200214111000
+  char *buff = strtok(toParse, ":");
+  while (buff != 0)
+  {
+    char *separator = strchr(buff, '*');
+    if (separator != 0)
+    {
+      *separator = 0;
+      if (i == 1)
+      {
+        parse_volt = buff;
+      }
+      i++;
+    }
+    buff = strtok(0, ":");
+  }
+  parse_volt.toCharArray(final_volt, 200);
+  return final_volt;
+}
+*/
+
+String parse_voltage(char *toParse)
+// char *parse_voltage(char *toParse)
+{
+  int i = 0;
+  String parse_volt;
+
+  //MADTB*VOLT:12.33*200214111000
+  char *buff = strtok(toParse, ":");
+  while (buff != 0)
+  {
+    char *separator = strchr(buff, '*');
+    if (separator != 0)
+    {
+      *separator = 0;
+      if (i == 1)
+      {
+        parse_volt = buff;
+      }
+      i++;
+    }
+    buff = strtok(0, ":");
+  }
+  return parse_volt;
 }
