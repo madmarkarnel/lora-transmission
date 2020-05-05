@@ -15,8 +15,7 @@ void getAtcommand()
   do
   {
     serial_line = Serial.readStringUntil('\r\n');
-  }
-  while (serial_line == "");
+  } while (serial_line == "");
   serial_line.toUpperCase();
   serial_line.replace("\r", "");
 
@@ -118,11 +117,25 @@ void getAtcommand()
   else if (command == "H")
   {
     readTimeStamp();
-    char testMsg[200] = "Test messsage";
+    char testMsg[200] = "SENSLOPE,SENSORPOLL";
     strncat(testMsg, ",", 1);
     strncat(testMsg, Ctimestamp, 168);
     send_thru_gsm(testMsg, get_serverNum_from_flashMem());
-    testMsg[0] = '\0';    
+    testMsg[0] = '\0';
+  }
+  else if (command == "I")
+  {
+    //check gsm response
+    // GSMSerial.write("AT\r");
+    // gsmReadOK();
+    // GSMSerial.write("AT+CSQ\r");
+    // gsmReadOK();
+    // getCSQval(readGSMResponse());
+    GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
+    while (GSMSerial.available() > 0)
+    {
+      processIncomingByte(GSMSerial.read());
+    }
   }
   else if (command == "J")
   {
@@ -132,16 +145,30 @@ void getAtcommand()
       setLoggerVersion();
     Serial.readStringUntil('\r\n');
   }
+  else if (command == "K")
+  {
+    //vjvj
+    // readOK("AT\r");
+    // GSMSerial.write("AT+CMGR=1\r");
+    GSMSerial.write("AT+CSQ\r");
+    while (GSMSerial.available() > 0)
+    {
+      processByteReply(GSMSerial.read());
+    }
+  }
   else if (command == "L")
   {
-    build_message(0);
-    send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
+    // build_message(0);
+    // send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
+
+    manualGSMcmd();
+    // getCSQval(serialData);
   }
   else if (command == "M")
   {
     build_message(1);
     send_thru_lora(dataToSend);
-  }  
+  }
   else if (command == "N")
   {
     Serial.print("Sensor Name A: ");
@@ -160,7 +187,7 @@ void getAtcommand()
   {
     Serial.print("CSQ: ");
     Serial.println(getCSQ());
-    // getCSQ();
+    // getCSQval(readGSMResponse());
   }
   else if (command == "P")
   {
@@ -184,7 +211,7 @@ void getAtcommand()
     Serial.print("Timestamp: ");
     Serial.println(Ctimestamp);
     if (isChangeParam())
-        setupTime();
+      setupTime();
   }
   else if (command == "T")
   {
@@ -228,6 +255,25 @@ void getAtcommand()
     Serial.println("waiting fo LoRa data. . .");
     receive_lora_data(get_logger_version());
   }
+  else if (command == "Y")
+  {
+    // test
+    /*
+    char cmd[50];
+    Serial.setTimeout(15000);
+    Serial.print("Enter GSM command: ");
+    String gsmCmd = Serial.readStringUntil('\n');
+    Serial.println(gsmCmd);
+    gsmCmd.toCharArray(cmd, sizeof(cmd));
+    testReply(cmd);
+    */
+    readTimeStamp();
+    char testMsg[200] = "SENSLOPE,REGISTERNUM";
+    strncat(testMsg, ",", 1);
+    strncat(testMsg, Ctimestamp, 168);
+    send_thru_gsm(testMsg, get_serverNum_from_flashMem());
+    testMsg[0] = '\0';
+  }
   else if (command == "Z")
   {
     //do something
@@ -257,9 +303,9 @@ void printMenu()
   Serial.println(F("[F] Change 'server number' from flash memory"));
   Serial.println(F("[G] Print input voltage"));
   Serial.println(F("[H] Test GSM"));
-  // Serial.println(F("[I] "));
+  Serial.println(F("[I] GSM receive SMS test"));
   Serial.println(F("[J] Change logger version from flash memory"));
-  // Serial.println(F("[K] "));
+  Serial.println(F("[K] read sms"));
   Serial.println(F("[L] Print data to send. (rain)"));
   Serial.println(F("[M] Special sending rain data via LoRa"));
   Serial.println(F("[N] Change datalogger names from memory."));
@@ -694,7 +740,7 @@ void setAlarmEvery30(int alarmSET)
     }
     enable_rtc_interrupt();
     break;
-  }  
+  }
   }
 }
 
@@ -721,8 +767,7 @@ bool isChangeParam()
   do
   {
     serial_line = Serial.readStringUntil('\r\n');
-  }
-  while ((serial_line == "") && ((millis() - serStart) < 10000));
+  } while ((serial_line == "") && ((millis() - serStart) < 10000));
   serial_line.toUpperCase();
   serial_line.replace("\r", "");
   if (serial_line == "C")
@@ -732,7 +777,7 @@ bool isChangeParam()
   else
   {
     printMenu();
-    Serial.println("Change cancelled. Reselect."); 
+    Serial.println("Change cancelled. Reselect.");
     return false;
   }
 }

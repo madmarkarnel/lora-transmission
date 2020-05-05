@@ -37,13 +37,13 @@ Modified: 23 January 2020
 #define DUEBAUD 9600
 #define DUESerial Serial1
 #define RTCINTPIN 6
-#define DUETRIG 5 //moved to pin 5 - V5 logger; default is pin 10 ; changed from pin 10 to pin 9
-// #define DUETRIGOLD 10 //default is pin 10 ; changed from pin 10 to pin 9
+#define DUETRIG 5
 #define DEBUG 1
 #define VBATPIN A7
 #define VBATEXT A5
 #define GSMRST 12
 #define GSMPWR A2
+#define GSMINT A0 //gsm ring interrupt
 
 //for m0
 #define RFM95_CS 8
@@ -57,7 +57,7 @@ Modified: 23 January 2020
 #define DUETIMEOUT 200000 //260 000 ~4 minutes 20 seconds timeout
 #define RAININT A4        //rainfall interrupt pin A4
 
-//Pin 11-rx ; 10-tx (GSM comms)
+/* Pin 11-Rx ; 10-Tx (GSM comms) */
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
 void SERCOM1_Handler()
 {
@@ -93,6 +93,7 @@ const unsigned int DEBOUNCE_TIME = 40; //40
 volatile float rainTips = 0.00;
 char sendRainTip[7] = "0.00";
 
+volatile bool gsmRingFlag = false;  //gsm interrupt
 volatile bool rainFallFlag = false; //rain tips
 volatile bool OperationFlag = false;
 bool getSensorDataFlag = false;
@@ -152,7 +153,7 @@ void setup()
   DUESerial.begin(DUEBAUD);
   GSMSerial.begin(9600);
 
-  // Assign pins 10 & 11 SERCOM functionality
+  /* Assign pins 10 & 11 SERCOM functionality */
   pinPeripheral(10, PIO_SERCOM);
   pinPeripheral(11, PIO_SERCOM);
 
@@ -170,10 +171,14 @@ void setup()
   digitalWrite(GSMPWR, LOW);
   digitalWrite(GSMRST, HIGH);
 
-  //rain gauge interrupt
+  /* rain gauge interrupt */
   attachInterrupt(RAININT, rainISR, FALLING);
+  /* rtc interrupt */
   attachInterrupt(RTCINTPIN, wake, FALLING);
-  init_Sleep(); //initialize MCU sleep State working!!!!
+  /* ring interrupt */
+  attachInterrupt(GSMINT, ringISR, FALLING);
+
+  init_Sleep(); //initialize MCU sleep state
 
   setAlarmEvery30(alarmFromFlashMem()); //rtc alarm settings
   rf95.sleep();
@@ -319,10 +324,26 @@ void loop()
     rainFallFlag = false;
   }
 
+  if (gsmRingFlag)
+  {
+    flashLed(LED_BUILTIN, 3, 50);
+
+    GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
+    delay(300);
+    while (GSMSerial.available() > 0)
+    {
+      processIncomingByte(GSMSerial.read());
+    }
+
+    attachInterrupt(GSMINT, ringISR, FALLING);
+    gsmRingFlag = false;
+  }
+
   setAlarmEvery30(alarmFromFlashMem());
   delay(75);
   rtc.clearINTStatus();
 
+  attachInterrupt(GSMINT, ringISR, FALLING);
   attachInterrupt(RAININT, rainISR, FALLING);
   attachInterrupt(RTCINTPIN, wake, FALLING);
   sleepNow();
@@ -641,6 +662,12 @@ void wake()
   detachInterrupt(RTCINTPIN);
 }
 
+void ringISR()
+{
+  gsmRingFlag = true;
+  detachInterrupt(GSMINT);
+}
+
 // GATEWAY*RSSI,MAD,MADTA,rssi,voltage,MADTB,,,*200212141406
 // main logger name, MARTA, MARTB, . . .
 void get_rssi(uint8_t mode)
@@ -703,6 +730,9 @@ void get_rssi(uint8_t mode)
   Serial.println(dataToSend);
 }
 
+/**
+ * Get data allocated from flash memory
+*/
 char *stationName_from_flashMem()
 {
   String get_cmd;
@@ -884,15 +914,15 @@ float BatteryVoltage(uint8_t ver)
 }
 
 /*
-- interrupts EIC
-EXTERNAL_INT_2: A0, A5, 10
-EXTERNAL_INT_4: A3, 6
-EXTERNAL_INT_5: A4, 7
-EXTERNAL_INT_6: 8, SDA
-EXTERNAL_INT_7: 9, SCL
-EXTERNAL_INT_9: A2, 3
-EXTERNAL_INT_10: TX, MOSI
-EXTERNAL_INT_11: RX, SCK
+  ** interrupts EIC
+  EXTERNAL_INT_2: A0, A5, 10
+  EXTERNAL_INT_4: A3, 6
+  EXTERNAL_INT_5: A4, 7
+  EXTERNAL_INT_6: 8, SDA
+  EXTERNAL_INT_7: 9, SCL
+  EXTERNAL_INT_9: A2, 3
+  EXTERNAL_INT_10: TX, MOSI
+  EXTERNAL_INT_11: RX, SCK
 */
 void init_Sleep()
 {
@@ -906,6 +936,7 @@ void init_Sleep()
 
   EIC->WAKEUP.reg |= EIC_WAKEUP_WAKEUPEN4; // Set External Interrupt Controller to use channel 4 (pin 6)
   EIC->WAKEUP.reg |= EIC_WAKEUP_WAKEUPEN5; // Set External Interrupt Controller to use channel 2 (pin A4)
+  // EIC->WAKEUP.reg |= EIC_WAKEUP_WAKEUPEN2; // channel 2 (pin A0)
 
   PM->SLEEP.reg |= PM_SLEEP_IDLE_CPU; // Enable Idle0 mode - sleep CPU clock only
   //PM->SLEEP.reg |= PM_SLEEP_IDLE_AHB; // Idle1 - sleep CPU and AHB clocks
@@ -1063,28 +1094,14 @@ void no_data_from_senslope(uint8_t mode)
 void turn_ON_due(uint8_t mode)
 {
   Serial.println("Turning ON Custom Due. . .");
-  // if (mode == 1 || mode == 2)
-  // {
-  //   digitalWrite(DUETRIGOLD, HIGH);
-  // }
-  // else
-  // {
   digitalWrite(DUETRIG, HIGH);
-  // }
   delay(100);
 }
 
 void turn_OFF_due(uint8_t mode)
 {
   Serial.println("Turning OFF Custom Due. . .");
-  // if (mode == 1 || mode == 2)
-  // {
-  //   digitalWrite(DUETRIGOLD, LOW);
-  // }
-  // else
-  // {
   digitalWrite(DUETRIG, LOW);
-  // }
   delay(100);
 }
 
@@ -1092,7 +1109,7 @@ void resetGSM()
 {
   //added reset
   digitalWrite(GSMRST, LOW);
-  delay(400);
+  delay(500);
   digitalWrite(GSMRST, HIGH);
   Serial.println("GSM resetting . . .");
 }
@@ -1104,10 +1121,12 @@ void turn_ON_GSM()
   delay(500);
   //gsm initialization
   GSMSerial.write("AT\r");
-  delay(500);
+  // delay(500);
+  gsmReadOK();
   //turn off echo
   GSMSerial.write("ATE0\r");
-  delay(500);
+  // delay(500);
+  gsmReadOK();
   gsmManualNetworkConnect();
   delay(500);
 }
@@ -1242,7 +1261,6 @@ char *parse_voltage(char *toParse)
 */
 
 String parse_voltage(char *toParse)
-// char *parse_voltage(char *toParse)
 {
   int i = 0;
   String parse_volt;
@@ -1255,7 +1273,7 @@ String parse_voltage(char *toParse)
     if (separator != 0)
     {
       *separator = 0;
-      if (i == 1)
+      if (i == 1) //2nd appearance
       {
         parse_volt = buff;
       }
