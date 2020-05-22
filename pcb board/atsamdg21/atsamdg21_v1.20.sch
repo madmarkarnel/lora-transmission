@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="9.5.1">
+<eagle version="9.6.1">
 <drawing>
 <settings>
-<setting alwaysvectorfont="yes"/>
+<setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
 <grid distance="10" unitdist="mil" unit="mil" style="lines" multiple="1" display="yes" altdistance="5" altunitdist="mil" altunit="mil"/>
@@ -6699,14 +6699,6 @@ Source: AVX .. aphvc.pdf</description>
 <pinref part="U4" gate="G$1" pin="DIO5"/>
 </segment>
 </net>
-<net name="N$3" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="!RESETN"/>
-<wire x1="50.324" y1="227.076" x2="44.704" y2="227.076" width="0.1524" layer="91"/>
-<pinref part="R3" gate="G$1" pin="2"/>
-<wire x1="44.704" y1="227.076" x2="44.704" y2="228.156" width="0.1524" layer="91"/>
-</segment>
-</net>
 <net name="N$1" class="0">
 <segment>
 <pinref part="U1" gate="G$1" pin="VDDCORE"/>
@@ -6772,6 +6764,13 @@ Source: AVX .. aphvc.pdf</description>
 <label x="316.738" y="232.156" size="1.778" layer="95"/>
 <pinref part="SW1" gate="G$1" pin="P"/>
 <pinref part="SW1" gate="G$1" pin="P1"/>
+</segment>
+<segment>
+<pinref part="U1" gate="G$1" pin="!RESETN"/>
+<wire x1="50.324" y1="227.076" x2="44.704" y2="227.076" width="0.1524" layer="91"/>
+<pinref part="R3" gate="G$1" pin="2"/>
+<wire x1="44.704" y1="227.076" x2="44.704" y2="228.156" width="0.1524" layer="91"/>
+<label x="44.196" y="224.79" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="12VIN" class="0">
@@ -6887,13 +6886,10 @@ Source: AVX .. aphvc.pdf</description>
 <wire x1="258.216" y1="116.11" x2="258.216" y2="116.042" width="0.1524" layer="91"/>
 <wire x1="258.216" y1="116.042" x2="276.606" y2="116.042" width="0.1524" layer="91"/>
 </segment>
-</net>
-<net name="N$8" class="0">
 <segment>
 <pinref part="C17" gate="G$1" pin="1"/>
-<wire x1="264.922" y1="116.078" x2="264.842" y2="116.078" width="0.1524" layer="91"/>
-<wire x1="264.842" y1="116.078" x2="264.842" y2="113.91" width="0.1524" layer="91"/>
-<junction x="264.922" y="116.078"/>
+<wire x1="264.842" y1="113.91" x2="264.842" y2="116.078" width="0.1524" layer="91"/>
+<wire x1="264.842" y1="116.078" x2="264.668" y2="116.078" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="+4V" class="0">
