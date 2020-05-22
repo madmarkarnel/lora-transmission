@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="9.6.1">
+<eagle version="9.5.1">
 <drawing>
 <settings>
-<setting alwaysvectorfont="no"/>
+<setting alwaysvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
 <grid distance="10" unitdist="mil" unit="mil" style="lines" multiple="1" display="yes" altdistance="5" altunitdist="mil" altunit="mil"/>
@@ -6252,13 +6252,6 @@ Source: AVX .. aphvc.pdf</description>
 <label x="78.134" y="25.628" size="1.778" layer="95"/>
 </segment>
 </net>
-<net name="RST" class="0">
-<segment>
-<pinref part="X1" gate="-3" pin="1"/>
-<wire x1="368.554" y1="239.522" x2="371.856" y2="239.522" width="0.1524" layer="91"/>
-<label x="371.856" y="239.522" size="1.778" layer="95" xref="yes"/>
-</segment>
-</net>
 <net name="A0" class="0">
 <segment>
 <pinref part="U1" gate="G$1" pin="PA02"/>
@@ -6771,6 +6764,11 @@ Source: AVX .. aphvc.pdf</description>
 <pinref part="R3" gate="G$1" pin="2"/>
 <wire x1="44.704" y1="227.076" x2="44.704" y2="228.156" width="0.1524" layer="91"/>
 <label x="44.196" y="224.79" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="X1" gate="-3" pin="1"/>
+<wire x1="368.554" y1="239.522" x2="371.856" y2="239.522" width="0.1524" layer="91"/>
+<label x="371.856" y="239.522" size="1.778" layer="95" xref="yes"/>
 </segment>
 </net>
 <net name="12VIN" class="0">
