@@ -12,7 +12,7 @@ The circuit:
 
 Created: 12 October 2019
 By : MAD, TEP
-Modified: 23 January 2020
+Modified: 29 May 2020
 */
 
 #include <Wire.h>
@@ -28,11 +28,6 @@ Modified: 23 January 2020
 #include <Regexp.h>
 #include <string.h>
 
-//gsm related
-#define GSMBAUDRATE 9600
-#define GSMSerial Serial2
-#define MAXSMS 168
-
 #define BAUDRATE 115200
 #define DUEBAUD 9600
 #define DUESerial Serial1
@@ -45,6 +40,11 @@ Modified: 23 January 2020
 #define GSMPWR A2
 #define GSMINT A0 //gsm ring interrupt
 
+//gsm related
+#define GSMBAUDRATE 9600
+#define GSMSerial Serial2
+#define MAXSMS 168
+
 //for m0
 #define RFM95_CS 8
 #define RFM95_RST 4
@@ -56,16 +56,6 @@ Modified: 23 January 2020
 #define LORATIMEOUTMODE2 900000
 #define DUETIMEOUT 200000 //260 000 ~4 minutes 20 seconds timeout
 #define RAININT A4        //rainfall interrupt pin A4
-
-/* Pin 11-Rx ; 10-Tx (GSM comms) */
-Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
-void SERCOM1_Handler()
-{
-  Serial2.IrqHandler();
-}
-
-//Server number
-String serverNumber = ("639175972526");
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
@@ -111,6 +101,15 @@ uint8_t debug_flag = 0;
 uint8_t rcv_LoRa_flag = 0;
 uint16_t store_rtc = 00; //store rtc alarm
 
+String serverNumber = ("639175972526");
+
+/* Pin 11-Rx ; 10-Tx (GSM comms) */
+Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
+void SERCOM1_Handler()
+{
+  Serial2.IrqHandler();
+}
+
 typedef struct
 {
   boolean valid;
@@ -136,6 +135,13 @@ typedef struct
 } serNumber;
 serNumber flashServerNumber;
 
+typedef struct
+{
+  boolean valid;
+  char keyword[50];
+} smsPassword;
+smsPassword flashPassword;
+
 /**
  * Reserve a portion of flash memory to store an "int" variable
  * and call it "alarmStorage".
@@ -145,15 +151,15 @@ FlashStorage(loggerVersion, int);
 FlashStorage(passCommand, Senslope);
 FlashStorage(newServerNum, serNumber);
 FlashStorage(flashLoggerName, SensorName);
+FlashStorage(flashPasswordIn, smsPassword);
 
 void setup()
 {
-  // put your setup code here, to run once:
   Serial.begin(BAUDRATE);
   DUESerial.begin(DUEBAUD);
   GSMSerial.begin(9600);
 
-  /* Assign pins 10 & 11 SERCOM functionality */
+  /* Assign pins 10 & 11 UART SERCOM functionality */
   pinPeripheral(10, PIO_SERCOM);
   pinPeripheral(11, PIO_SERCOM);
 
@@ -182,6 +188,7 @@ void setup()
 
   setAlarmEvery30(alarmFromFlashMem()); //rtc alarm settings
   rf95.sleep();
+
   /*
   //gsm initialization
   GSMSerial.write("AT\r");
@@ -190,7 +197,9 @@ void setup()
   GSMSerial.write("ATE0\r");
   delay(100);
   // gsmManualNetworkConnect();
-*/
+  */
+
+  /*Enter DEBUG mode within 10 seconds*/
   Serial.println("Press 'C' to go DEBUG mode!");
   unsigned long serStart = millis();
   while (serial_flag == 0)
@@ -227,7 +236,7 @@ void loop()
     {
       turn_ON_GSM();
 
-      get_Due_Data(1);
+      get_Due_Data(1, get_serverNum_from_flashMem());
 
       send_rain_tips();
       resetRainTips();
@@ -244,7 +253,7 @@ void loop()
     else if (get_logger_version() == 2)
     {
       //LoRa transmitter of version 5 datalogger
-      get_Due_Data(2);
+      get_Due_Data(2, get_serverNum_from_flashMem());
     }
     else if (get_logger_version() == 3)
     {
@@ -289,12 +298,12 @@ void loop()
     else if (get_logger_version() == 6)
     {
       //default arabica LoRa transmitter
-      get_Due_Data(0);
+      get_Due_Data(0, get_serverNum_from_flashMem());
     }
     else if (get_logger_version() == 7)
     {
       // Sends rain gauge data via LoRa
-      get_Due_Data(0);
+      get_Due_Data(0, get_serverNum_from_flashMem());
       delay(1000);
       build_message(1);
       send_thru_lora(dataToSend);
@@ -303,7 +312,7 @@ void loop()
     {
       //default arQ like sending
       turn_ON_GSM();
-      get_Due_Data(1);
+      get_Due_Data(1, get_serverNum_from_flashMem());
 
       send_rain_tips();
       resetRainTips();
@@ -357,11 +366,11 @@ void wakeAndSleep(uint8_t verSion)
 
     if (verSion == 1)
     {
-      get_Due_Data(2); //tx of v5 logger
+      get_Due_Data(2, get_serverNum_from_flashMem()); //tx of v5 logger
     }
     else
     {
-      get_Due_Data(0); //default arabica
+      get_Due_Data(0, get_serverNum_from_flashMem()); //default arabica
     }
 
     setAlarmEvery30(alarmFromFlashMem());
@@ -379,6 +388,7 @@ void wakeAndSleep(uint8_t verSion)
   */
 }
 
+/*Enable sleep-standby*/
 void sleepNow()
 {
   SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk; //disable systick interrupt
@@ -491,6 +501,7 @@ void receive_lora_data(uint8_t mode)
         {
           if (mode == 1 || mode == 3 || mode == 4)
           {
+            /*remove 1st & 2nd character*/
             for (byte i = 0; i < strlen(received); i++)
             {
               received[i] = received[i + 2];
@@ -624,7 +635,7 @@ void receive_lora_data(uint8_t mode)
           }
           else
           {
-            // version 3 mode
+            /*only 1 transmitter*/
             tx_RSSI = (rf95.lastRssi(), DEC);
             Serial.print("RSSI: ");
             Serial.println(tx_RSSI);
@@ -668,8 +679,9 @@ void ringISR()
   detachInterrupt(GSMINT);
 }
 
-// GATEWAY*RSSI,MAD,MADTA,rssi,voltage,MADTB,,,*200212141406
-// main logger name, MARTA, MARTB, . . .
+/**GATEWAY*RSSI,MAD,MADTA,rssi,voltage,MADTB,,,*200212141406 
+  *main logger name, MARTA, MARTB, . . .
+*/
 void get_rssi(uint8_t mode)
 {
   char convertRssi[100];
@@ -797,6 +809,18 @@ String get_serverNum_from_flashMem()
   return flashNum;
 }
 
+char *get_password_from_flashMem()
+{
+  char charPass[50];
+  String flashPass;
+  flashPassword = flashPasswordIn.read();
+  flashPass = flashPassword.keyword;
+  flashPass.replace("\r", "");
+  flashPass.toCharArray(charPass, sizeof(charPass));
+  // strncpy(charPass, ",", 1);
+  return charPass;
+}
+
 /**
  * 0 - default for GSM sending
  * 1 - send to LoRa with >> and << added to data
@@ -894,16 +918,18 @@ char *read_batt_vol(uint8_t ver)
 float BatteryVoltage(uint8_t ver)
 {
   float measuredvbat;
-  // int vbatpin;
-  // if (ver == 1)
-  // {
-  //   measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
-  //   measuredvbat *= 2;                  // we divided by 2, so multiply back
-  //   measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
-  //   measuredvbat /= 1024;               // convert to voltage
-  // }
-  // else
-  // {
+  /*
+  int vbatpin;
+  if (ver == 1)
+  {
+    measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
+    measuredvbat *= 2;                  // we divided by 2, so multiply back
+    measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
+    measuredvbat /= 1024;               // convert to voltage
+  }
+  else
+  {
+    */
   //Voltage Divider 1M ; 100k ;
   measuredvbat = analogRead(VBATEXT);
   measuredvbat *= 3.3;    // reference voltage
@@ -956,7 +982,7 @@ void getPwrdFromMemory()
  * ~5 minutes timeout if no data read.  
  * mode in sending data: 1-gsm ; 0 - LoRa(defualt) ; 2 - V5 logger
 */
-void get_Due_Data(uint8_t mode)
+void get_Due_Data(uint8_t mode, String serverNum)
 {
   unsigned long start = millis();
   readTimeStamp();
@@ -992,7 +1018,7 @@ void get_Due_Data(uint8_t mode)
       if (strstr(streamBuffer, "*"))
       {
         Serial.println("Getting sensor data. . .");
-        if (mode == 1)
+        if (mode == 0 || mode == 1)
         {
           /**
             * Remove 1st and 2nd character data in string
@@ -1002,20 +1028,24 @@ void get_Due_Data(uint8_t mode)
           {
             streamBuffer[i] = streamBuffer[i + 2];
           }
-          send_thru_gsm(streamBuffer, get_serverNum_from_flashMem()); //send to GSM
+          // send_thru_gsm(streamBuffer, get_serverNum_from_flashMem());
+          send_thru_gsm(streamBuffer, serverNum);
           flashLed(LED_BUILTIN, 2, 100);
           DUESerial.write("OK");
         }
-        else if (mode == 2)
-        {
-          send_thru_lora(streamBuffer);
-          flashLed(LED_BUILTIN, 2, 100);
-          DUESerial.write("OK");
-        }
-        else
+        else if (mode == 6 || mode == 7)
         {
           strncat(streamBuffer, "<<", 2);
           delay(10);
+          send_thru_lora(streamBuffer);
+          flashLed(LED_BUILTIN, 2, 100);
+          DUESerial.write("OK");
+          // send_thru_lora(streamBuffer);
+          // flashLed(LED_BUILTIN, 2, 100);
+          // DUESerial.write("OK");
+        }
+        else
+        {
           send_thru_lora(streamBuffer);
           flashLed(LED_BUILTIN, 2, 100);
           DUESerial.write("OK");
@@ -1053,6 +1083,14 @@ void get_Due_Data(uint8_t mode)
  * Sends no data from senslope if no data available
  * mode :     1 - gsm
  * default:   0 - LoRa
+ *Serial.println("[0] Sendng data using GSM only");
+  Serial.println("[1] Version 5 datalogger LoRa with GSM");
+  Serial.println("[2] LoRa transmitter for version 5 datalogger");
+  Serial.println("[3] Gateway Mode with only ONE LoRa transmitter");
+  Serial.println("[4] Gateway Mode with TWO LoRa transmitter");
+  Serial.println("[5] Gateway Mode with THREE LoRa transmitter");
+  Serial.println("[6] LoRa transmitter for Raspberry Pi");
+  Serial.println("[7] Sends rain gauge data via LoRa");
 */
 void no_data_from_senslope(uint8_t mode)
 {
@@ -1061,7 +1099,7 @@ void no_data_from_senslope(uint8_t mode)
   Serial.println("No data from senslope");
   streamBuffer[0] = '\0';
 
-  if (mode == 1)
+  if (mode == 1 || mode == 0)
   {
     strncpy((streamBuffer), (get_logger_A_from_flashMem()), (20));
   }
@@ -1074,7 +1112,7 @@ void no_data_from_senslope(uint8_t mode)
   strncat(streamBuffer, "*NODATAFROMSENSLOPE*", 22);
   strncat(streamBuffer, Ctimestamp, sizeof(Ctimestamp));
 
-  if (mode == 1)
+  if (mode == 1 || mode == 0)
   {
     send_thru_gsm(streamBuffer, get_serverNum_from_flashMem());
   }
@@ -1103,39 +1141,6 @@ void turn_OFF_due(uint8_t mode)
   Serial.println("Turning OFF Custom Due. . .");
   digitalWrite(DUETRIG, LOW);
   delay(100);
-}
-
-void resetGSM()
-{
-  //added reset
-  digitalWrite(GSMRST, LOW);
-  delay(500);
-  digitalWrite(GSMRST, HIGH);
-  Serial.println("GSM resetting . . .");
-}
-
-void turn_ON_GSM()
-{
-  digitalWrite(GSMPWR, HIGH);
-  Serial.println("Turning ON GSM . . .");
-  delay(500);
-  //gsm initialization
-  GSMSerial.write("AT\r");
-  // delay(500);
-  gsmReadOK();
-  //turn off echo
-  GSMSerial.write("ATE0\r");
-  // delay(500);
-  gsmReadOK();
-  gsmManualNetworkConnect();
-  delay(500);
-}
-
-void turn_OFF_GSM()
-{
-  delay(1000);
-  digitalWrite(GSMPWR, LOW);
-  Serial.println("Turning OFF GSM . . .");
 }
 
 void rainISR()
@@ -1172,6 +1177,30 @@ void send_rain_tips()
   delay(100);
   send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
   // delay(50);
+}
+
+String parse_voltage(char *toParse)
+{
+  int i = 0;
+  String parse_volt;
+
+  //MADTB*VOLT:12.33*200214111000
+  char *buff = strtok(toParse, ":");
+  while (buff != 0)
+  {
+    char *separator = strchr(buff, '*');
+    if (separator != 0)
+    {
+      *separator = 0;
+      if (i == 1) //2nd appearance
+      {
+        parse_volt = buff;
+      }
+      i++;
+    }
+    buff = strtok(0, ":");
+  }
+  return parse_volt;
 }
 
 /*
@@ -1259,27 +1288,3 @@ char *parse_voltage(char *toParse)
   return final_volt;
 }
 */
-
-String parse_voltage(char *toParse)
-{
-  int i = 0;
-  String parse_volt;
-
-  //MADTB*VOLT:12.33*200214111000
-  char *buff = strtok(toParse, ":");
-  while (buff != 0)
-  {
-    char *separator = strchr(buff, '*');
-    if (separator != 0)
-    {
-      *separator = 0;
-      if (i == 1) //2nd appearance
-      {
-        parse_volt = buff;
-      }
-      i++;
-    }
-    buff = strtok(0, ":");
-  }
-  return parse_volt;
-}

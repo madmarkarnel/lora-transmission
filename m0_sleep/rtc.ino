@@ -30,8 +30,6 @@ void getAtcommand()
   else
     command = serial_line.substring(0, i_equals);
 
-  // Serial.println(command);
-
   if (command == ATCMD)
     Serial.println(OKSTR);
   else if (command == ATECMDTRUE)
@@ -47,8 +45,7 @@ void getAtcommand()
   else if (command == "A")
   {
     turn_ON_GSM();
-    get_Due_Data(get_logger_version());
-    gsmManualNetworkConnect();
+    get_Due_Data(get_logger_version(), get_serverNum_from_flashMem());
     turn_OFF_GSM();
   }
   else if (command == "B")
@@ -147,14 +144,11 @@ void getAtcommand()
   }
   else if (command == "K")
   {
-    //vjvj
-    // readOK("AT\r");
-    // GSMSerial.write("AT+CMGR=1\r");
-    GSMSerial.write("AT+CSQ\r");
-    while (GSMSerial.available() > 0)
-    {
-      processByteReply(GSMSerial.read());
-    }
+    Serial.print("Password: ");
+    Serial.println(get_password_from_flashMem());
+    if (isChangeParam())
+      changePassword();
+    Serial.readStringUntil('\r\n');
   }
   else if (command == "L")
   {
@@ -162,7 +156,6 @@ void getAtcommand()
     // send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
 
     manualGSMcmd();
-    // getCSQval(serialData);
   }
   else if (command == "M")
   {
@@ -187,7 +180,6 @@ void getAtcommand()
   {
     Serial.print("CSQ: ");
     Serial.println(getCSQ());
-    // getCSQval(readGSMResponse());
   }
   else if (command == "P")
   {
@@ -204,6 +196,9 @@ void getAtcommand()
   else if (command == "R")
   {
     resetGSM();
+    // readTimeStamp();
+    // Serial.print("Timestamp: ");
+    // Serial.println(Ctimestamp);
   }
   else if (command == "S")
   {
@@ -258,21 +253,13 @@ void getAtcommand()
   else if (command == "Y")
   {
     // test
-    /*
-    char cmd[50];
-    Serial.setTimeout(15000);
-    Serial.print("Enter GSM command: ");
+    char specialMsg[200];
+    Serial.setTimeout(20000);
+    Serial.print("Enter message to send: ");
     String gsmCmd = Serial.readStringUntil('\n');
     Serial.println(gsmCmd);
-    gsmCmd.toCharArray(cmd, sizeof(cmd));
-    testReply(cmd);
-    */
-    readTimeStamp();
-    char testMsg[200] = "SENSLOPE,REGISTERNUM";
-    strncat(testMsg, ",", 1);
-    strncat(testMsg, Ctimestamp, 168);
-    send_thru_gsm(testMsg, get_serverNum_from_flashMem());
-    testMsg[0] = '\0';
+    gsmCmd.toCharArray(specialMsg, sizeof(specialMsg));
+    send_thru_gsm(specialMsg, get_serverNum_from_flashMem());
   }
   else if (command == "Z")
   {
@@ -305,8 +292,8 @@ void printMenu()
   Serial.println(F("[H] Test GSM"));
   Serial.println(F("[I] GSM receive SMS test"));
   Serial.println(F("[J] Change logger version from flash memory"));
-  Serial.println(F("[K] read sms"));
-  Serial.println(F("[L] Print data to send. (rain)"));
+  Serial.println(F("[K] Change MCU password"));
+  Serial.println(F("[L] Manual GSM commands"));
   Serial.println(F("[M] Special sending rain data via LoRa"));
   Serial.println(F("[N] Change datalogger names from memory."));
   Serial.println(F("[O] Read GSM CSQ."));
@@ -319,6 +306,7 @@ void printMenu()
   Serial.println(F("[V] Sleep GSM"));
   Serial.println(F("[W] Wake GSM"));
   Serial.println(F("[X] wait for Lora data"));
+  Serial.println(F("[Y] Send SMS"));
   Serial.println(F("[Z] Change SENSLOPE command."));
   Serial.println(F("-----------------------------------------------"));
 }
@@ -444,12 +432,20 @@ void changeServerNumber()
   newServerNum.write(flashServerNumber); //save to flash memory
 }
 
+void changePassword()
+{
+  Serial.setTimeout(15000);
+  String inPass = Serial.readStringUntil('\n');
+  inPass += ",";
+  inPass.toCharArray(flashPassword.keyword, 50);
+  flashPasswordIn.write(flashPassword);
+}
+
 void setupTime()
 {
   int MM = 0, DD = 0, YY = 0, hh = 0, mm = 0, ss = 0, dd = 0;
-  //Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));
-  delay(50);
-
+  //Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));  
+  // delay(10);
   while (!Serial.available())
   {
   }
@@ -590,6 +586,7 @@ void setAlarm()
   }
 }
 
+//30 minutes interval
 void setAlarmEvery30(int alarmSET)
 {
   DateTime now = rtc.now(); //get the current date-time
