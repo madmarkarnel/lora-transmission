@@ -44,9 +44,9 @@ void getAtcommand()
   }
   else if (command == "A")
   {
-    turn_ON_GSM();
+    // turn_ON_GSM();
     get_Due_Data(get_logger_version(), get_serverNum_from_flashMem());
-    turn_OFF_GSM();
+    // turn_OFF_GSM();
   }
   else if (command == "B")
   {
@@ -113,12 +113,19 @@ void getAtcommand()
   }
   else if (command == "H")
   {
+    /*
     readTimeStamp();
     char testMsg[200] = "SENSLOPE,SENSORPOLL";
     strncat(testMsg, ",", 1);
     strncat(testMsg, Ctimestamp, 168);
     send_thru_gsm(testMsg, get_serverNum_from_flashMem());
     testMsg[0] = '\0';
+    */
+    Serial.println("A");
+    delay(1000);
+    Serial.println("Resetting MCU Programatically!");
+    resetFunc();
+    Serial.println("MCU will never reach here!");
   }
   else if (command == "I")
   {
@@ -164,14 +171,54 @@ void getAtcommand()
   }
   else if (command == "N")
   {
-    Serial.print("Sensor Name A: ");
-    Serial.println(get_logger_A_from_flashMem());
-    Serial.print("Sensor Name B: ");
-    Serial.println(get_logger_B_from_flashMem());
-    Serial.print("Sensor Name C: ");
-    Serial.println(get_logger_C_from_flashMem());
-    Serial.print("Sensor Name D: ");
-    Serial.println(get_logger_D_from_flashMem());
+    if (get_logger_version() == 1)
+    {
+      Serial.print("Gateway sensor name: ");
+      Serial.println(get_logger_A_from_flashMem());
+      Serial.print("Remote sensor name: ");
+      Serial.println(get_logger_B_from_flashMem());
+    }
+    else if (get_logger_version() == 3)
+    {
+      Serial.print("Gateway name: ");
+      Serial.println(get_logger_A_from_flashMem());
+      Serial.print("Sensor Name A: ");
+      Serial.println(get_logger_B_from_flashMem());
+    }    
+    else if (get_logger_version() == 4)
+    {
+      Serial.print("Gateway name: ");
+      Serial.println(get_logger_A_from_flashMem());
+      Serial.print("Sensor Name A: ");
+      Serial.println(get_logger_B_from_flashMem());
+      Serial.print("Sensor Name B: ");
+      Serial.println(get_logger_C_from_flashMem());
+    }    
+    else if (get_logger_version() == 5)
+    {
+      Serial.print("Gateway name: ");
+      Serial.println(get_logger_A_from_flashMem());
+      Serial.print("Sensor Name A: ");
+      Serial.println(get_logger_B_from_flashMem());
+      Serial.print("Sensor Name B: ");
+      Serial.println(get_logger_C_from_flashMem());
+      Serial.print("Sensor Name C: ");
+      Serial.println(get_logger_D_from_flashMem());
+    }
+    else
+    {
+      Serial.print("Gateway sensor name: ");
+      Serial.println(get_logger_A_from_flashMem());
+    }
+    // Serial.print("Sensor Name A: ");
+    // Serial.println(get_logger_A_from_flashMem());
+    // Serial.print("Sensor Name B: ");
+    // Serial.println(get_logger_B_from_flashMem());
+    // Serial.print("Sensor Name C: ");
+    // Serial.println(get_logger_C_from_flashMem());
+    // Serial.print("Sensor Name D: ");
+    // Serial.println(get_logger_D_from_flashMem());
+
     if (isChangeParam())
       inputLoggerNames();
     Serial.readStringUntil('\r\n');
@@ -289,7 +336,7 @@ void printMenu()
   Serial.println(F("[E] Exit Debug mode."));
   Serial.println(F("[F] Change 'server number' from flash memory"));
   Serial.println(F("[G] Print input voltage"));
-  Serial.println(F("[H] Test GSM"));
+  Serial.println(F("[H] Reset MCU programmatically"));
   Serial.println(F("[I] GSM receive SMS test"));
   Serial.println(F("[J] Change logger version from flash memory"));
   Serial.println(F("[K] Change MCU password"));
@@ -329,14 +376,14 @@ void print_rtcInterval()
 void setLoggerVersion()
 {
   int version;
-  Serial.println("[0] Sendng data using GSM only");
-  Serial.println("[1] Version 5 datalogger LoRa with GSM");
-  Serial.println("[2] LoRa transmitter for version 5 datalogger");
+  Serial.println("[0] Sendng data using GSM only");                //arQ like function only
+  Serial.println("[1] Version 5 datalogger LoRa with GSM");        //arQ + LoRa rx
+  Serial.println("[2] LoRa transmitter for version 5 datalogger"); //TX LoRa
   Serial.println("[3] Gateway Mode with only ONE LoRa transmitter");
   Serial.println("[4] Gateway Mode with TWO LoRa transmitter");
   Serial.println("[5] Gateway Mode with THREE LoRa transmitter");
-  Serial.println("[6] LoRa transmitter for Raspberry Pi");
-  Serial.println("[7] Sends rain gauge data via LoRa");
+  Serial.println("[6] LoRa transmitter for Raspberry Pi"); //TX LoRa
+  Serial.println("[7] Sends rain gauge data via LoRa");    //TX LoRa
   delay(1000);
   while (!Serial.available())
   {
@@ -404,23 +451,86 @@ void changeSensCommand()
 void inputLoggerNames()
 {
   Serial.setTimeout(20000);
-  Serial.print("Input name of SENSOR A: ");
-  String inputLoggerA = Serial.readStringUntil('\n');
-  Serial.println(inputLoggerA);
-  Serial.print("Input name of SENSOR B: ");
-  String inputLoggerB = Serial.readStringUntil('\n');
-  Serial.println(inputLoggerB);
-  Serial.print("Input name of SENSOR C: ");
-  String inputLoggerC = Serial.readStringUntil('\n');
-  Serial.println(inputLoggerC);
-  Serial.print("Input name of SENSOR D: ");
-  String inputLoggerD = Serial.readStringUntil('\n');
-  Serial.println(inputLoggerD);
-  inputLoggerA.toCharArray(loggerName.sensorA, 10);
-  inputLoggerB.toCharArray(loggerName.sensorB, 10);
-  inputLoggerC.toCharArray(loggerName.sensorC, 10);
-  inputLoggerD.toCharArray(loggerName.sensorD, 10);
-  flashLoggerName.write(loggerName);
+  if (get_logger_version() == 1)
+  {
+    Serial.print("Input name of gateway SENSOR: ");
+    String inputLoggerA = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerA);
+    Serial.print("Input name of remote SENSOR: ");
+    String inputLoggerB = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerB);
+    inputLoggerA.toCharArray(loggerName.sensorA, 10);
+    inputLoggerB.toCharArray(loggerName.sensorB, 10);
+    flashLoggerName.write(loggerName);
+  }
+  else if (get_logger_version() == 3)
+  {
+    Serial.print("Input name of GATEWAY: ");
+    String inputLoggerA = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerA);
+    Serial.print("Input name of remote SENSOR: ");
+    String inputLoggerB = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerB);
+    inputLoggerA.toCharArray(loggerName.sensorA, 10);
+    inputLoggerB.toCharArray(loggerName.sensorB, 10);
+    flashLoggerName.write(loggerName);
+  }
+  else if (get_logger_version() == 4)
+  {
+    Serial.print("Input name of GATEWAY: ");
+    String inputLoggerA = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerA);
+    Serial.print("Input name of remote SENSOR A: ");
+    String inputLoggerB = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerB);
+    Serial.print("Input name of remote SENSOR B: ");
+    String inputLoggerC = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerC);
+    inputLoggerA.toCharArray(loggerName.sensorA, 10);
+    inputLoggerB.toCharArray(loggerName.sensorB, 10);
+    inputLoggerC.toCharArray(loggerName.sensorC, 10);
+    flashLoggerName.write(loggerName);
+  }
+  else if (get_logger_version() == 5)
+  {
+    Serial.print("Input name of GATEWAY: ");
+    String inputLoggerA = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerA);
+    Serial.print("Input name of remote SENSOR A: ");
+    String inputLoggerB = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerB);
+    Serial.print("Input name of remote SENSOR B: ");
+    String inputLoggerC = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerC);
+    Serial.print("Input name of remote SENSOR C: ");
+    String inputLoggerD = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerD);
+    inputLoggerA.toCharArray(loggerName.sensorA, 10);
+    inputLoggerB.toCharArray(loggerName.sensorB, 10);
+    inputLoggerC.toCharArray(loggerName.sensorC, 10);
+    inputLoggerD.toCharArray(loggerName.sensorD, 10);
+    flashLoggerName.write(loggerName);
+  }
+  else
+  {
+    Serial.print("Input name of gateway SENSOR: ");
+    String inputLoggerA = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerA);
+    // Serial.print("Input name of SENSOR B: ");
+    // String inputLoggerB = Serial.readStringUntil('\n');
+    // Serial.println(inputLoggerB);
+    // Serial.print("Input name of SENSOR C: ");
+    // String inputLoggerC = Serial.readStringUntil('\n');
+    // Serial.println(inputLoggerC);
+    // Serial.print("Input name of SENSOR D: ");
+    // String inputLoggerD = Serial.readStringUntil('\n');
+    // Serial.println(inputLoggerD);
+    inputLoggerA.toCharArray(loggerName.sensorA, 10);
+    // inputLoggerB.toCharArray(loggerName.sensorB, 10);
+    // inputLoggerC.toCharArray(loggerName.sensorC, 10);
+    // inputLoggerD.toCharArray(loggerName.sensorD, 10);
+    flashLoggerName.write(loggerName);
+  }
 }
 
 void changeServerNumber()
@@ -444,7 +554,7 @@ void changePassword()
 void setupTime()
 {
   int MM = 0, DD = 0, YY = 0, hh = 0, mm = 0, ss = 0, dd = 0;
-  //Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));  
+  //Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));
   // delay(10);
   while (!Serial.available())
   {

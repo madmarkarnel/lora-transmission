@@ -99,18 +99,19 @@ void process_data(char *data)
     char *serverSMS = strtok(NULL, ",");
     Serial.print("Keyword: ");
     Serial.println(smsCommand);
+    flashLed(LED_BUILTIN, 2, 60);
     /* input sms command here */
     if (strstr(smsCommand, "SENSORPOLL"))
     {
       if (regServer == tempServer)
       {
-        flashLed(LED_BUILTIN, 4, 50);
+        flashLed(LED_BUILTIN, 3, 50);
         get_Due_Data(get_logger_version(), regServer);
       }
     }
     else if (strstr(smsCommand, "REGISTERNUM"))
     {
-      flashLed(LED_BUILTIN, 4, 50);
+      flashLed(LED_BUILTIN, 2, 50);
       regServer = "";
       regServer += tempServer;
       Serial.print("Saving this number: ");
@@ -122,7 +123,7 @@ void process_data(char *data)
       if (regServer == tempServer)
       {
         char serNum[50];
-        flashLed(LED_BUILTIN, 4, 50);
+        flashLed(LED_BUILTIN, 3, 50);
         regServer.toCharArray(serNum, sizeof(serNum));
         Serial.print("Registered Number: ");
         Serial.println(serNum);
@@ -133,7 +134,7 @@ void process_data(char *data)
       if (regServer == tempServer)
       {
         char tempSerNum[50];
-        flashLed(LED_BUILTIN, 4, 50);
+        flashLed(LED_BUILTIN, 3, 50);
         Serial.print("Server Number: ");
         Serial.println(get_serverNum_from_flashMem());
         get_serverNum_from_flashMem().toCharArray(tempSerNum, sizeof(tempSerNum));
@@ -146,23 +147,24 @@ void process_data(char *data)
       char newServer[50];
       if (regServer == tempServer)
       {
-        flashLed(LED_BUILTIN, 4, 50);
+        flashLed(LED_BUILTIN, 3, 50);
         /* save new server number from remote*/
         strcpy(flashServerNumber.inputNumber, serverSMS);
         newServerNum.write(flashServerNumber);
+
         get_serverNum_from_flashMem().toCharArray(newServer, sizeof(newServer));
 
         strncpy(messageNum, "New server number: ", 19);
         strncat(messageNum, newServer, sizeof(newServer));
         Serial.println(messageNum);
-        send_thru_gsm(messageNum, newServer);
+        send_thru_gsm(messageNum, tempServer);
       }
     }
     else if (strstr(smsCommand, "?PASSW"))
     {
       if (regServer == tempServer)
       {
-        flashLed(LED_BUILTIN, 4, 50);
+        flashLed(LED_BUILTIN, 3, 50);
         Serial.print("Password: ");
         Serial.println(get_password_from_flashMem());
         send_thru_gsm(get_password_from_flashMem(), regServer);
@@ -371,7 +373,7 @@ void turn_ON_GSM()
 {
   digitalWrite(GSMPWR, HIGH);
   Serial.println("Turning ON GSM . . .");
-  delay(500);
+  delay(2000);
   GSMSerial.write("AT\r");  //gsm initialization
   gsmReadOK();
   GSMSerial.write("ATE0\r");  //turn off echo

@@ -33,11 +33,13 @@ Modified: 29 May 2020
 #define DUESerial Serial1
 #define RTCINTPIN 6
 #define DUETRIG 5
+#define RSTMCU 9
 #define DEBUG 1
 #define VBATPIN A7
 #define VBATEXT A5
 #define GSMRST 12
 #define GSMPWR A2
+#define GSMDTR A1
 #define GSMINT A0 //gsm ring interrupt
 
 //gsm related
@@ -153,8 +155,11 @@ FlashStorage(newServerNum, serNumber);
 FlashStorage(flashLoggerName, SensorName);
 FlashStorage(flashPasswordIn, smsPassword);
 
+void (*resetFunc)(void) = 0;
+
 void setup()
 {
+  digitalWrite(RSTMCU, HIGH); //MCU hard reset pin
   Serial.begin(BAUDRATE);
   DUESerial.begin(DUEBAUD);
   GSMSerial.begin(9600);
@@ -171,6 +176,7 @@ void setup()
   pinMode(DUETRIG, OUTPUT);
   pinMode(GSMPWR, OUTPUT);
   pinMode(GSMRST, OUTPUT);
+  pinMode(RSTMCU, OUTPUT); //MCU hard reset pin
 
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(DUETRIG, LOW);
@@ -189,15 +195,8 @@ void setup()
   setAlarmEvery30(alarmFromFlashMem()); //rtc alarm settings
   rf95.sleep();
 
-  /*
-  //gsm initialization
-  GSMSerial.write("AT\r");
-  delay(100);
-  //turn off echo
-  GSMSerial.write("ATE0\r");
-  delay(100);
-  // gsmManualNetworkConnect();
-  */
+  turn_ON_GSM();
+  // sleepGSM();
 
   /*Enter DEBUG mode within 10 seconds*/
   Serial.println("Press 'C' to go DEBUG mode!");
@@ -311,7 +310,8 @@ void loop()
     else
     {
       //default arQ like sending
-      turn_ON_GSM();
+      // turn_ON_GSM();
+      // wakeGSM();
       get_Due_Data(1, get_serverNum_from_flashMem());
 
       send_rain_tips();
@@ -319,7 +319,8 @@ void loop()
 
       rf95.sleep();
       attachInterrupt(RTCINTPIN, wake, FALLING);
-      turn_OFF_GSM();
+      // turn_OFF_GSM();
+      // sleepGSM();
     }
 
     getSensorDataFlag = false;
@@ -328,13 +329,25 @@ void loop()
 
   if (rainFallFlag)
   {
-    flashLed(LED_BUILTIN, 1, 50);
-    attachInterrupt(RAININT, rainISR, FALLING);
-    rainFallFlag = false;
+    if (get_logger_version() == 2)
+    {
+      wakeGSM();
+      flashLed(LED_BUILTIN, 2, 50);
+      //LoRa transmitter of version 5 datalogger
+      get_Due_Data(2, get_serverNum_from_flashMem());
+      sleepGSM();
+    }
+    else
+    {
+      flashLed(LED_BUILTIN, 1, 50);
+      attachInterrupt(RAININT, rainISR, FALLING);
+      rainFallFlag = false;
+    }
   }
 
   if (gsmRingFlag)
   {
+    // wakeGSM();
     flashLed(LED_BUILTIN, 3, 50);
 
     GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
@@ -345,6 +358,7 @@ void loop()
     }
 
     attachInterrupt(GSMINT, ringISR, FALLING);
+    // sleepGSM();
     gsmRingFlag = false;
   }
 
@@ -498,8 +512,8 @@ void receive_lora_data(uint8_t mode)
         received[i] = (uint8_t)'\0';
 
         if (strstr(received, ">>"))
-        {
-          if (mode == 1 || mode == 3 || mode == 4)
+        { /*NOT LoRa: 0, 2, 6, 7*/
+          if (mode == 1 || mode == 3 || mode == 4 || mode == 5)
           {
             /*remove 1st & 2nd character*/
             for (byte i = 0; i < strlen(received); i++)
@@ -817,7 +831,6 @@ char *get_password_from_flashMem()
   flashPass = flashPassword.keyword;
   flashPass.replace("\r", "");
   flashPass.toCharArray(charPass, sizeof(charPass));
-  // strncpy(charPass, ",", 1);
   return charPass;
 }
 
@@ -1060,13 +1073,13 @@ void get_Due_Data(uint8_t mode, String serverNum)
     }
     else if (strstr(streamBuffer, "STOPLORA"))
     {
-      if (mode == 0 || mode == 2)
+      /*if (mode == 0 || mode == 2)
       {
         delay(1000);
         send_thru_lora(read_batt_vol(mode));
         delay(1500); //needed for the gsm to wait until sending
         send_thru_lora("STOPLORA");
-      }
+      }*/
       Serial.println("Done getting DUE data!");
       streamBuffer[0] = '\0';
       flashLed(LED_BUILTIN, 4, 90);
