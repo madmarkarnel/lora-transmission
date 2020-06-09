@@ -1,0 +1,5 @@
+ConfigParameters,	Update?,	Value
+realtimeclock,		1,			systemtime
+servernumber,		1,			SMART
+loggerversion,		1,			2
+sendingtime,		1,			2

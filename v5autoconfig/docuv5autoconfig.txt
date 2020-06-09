@@ -1,0 +1,68 @@
+###########################################
+V5 AUTOMATIC CONFIG SETUP (v5autoconfig.py)
+-> python script for fast and automated software setup of v5 dataloggers
+-> recommended for bulk programming
+
+###########################################
+Requirements:
+Python 3 on Windows
+
+###########################################
+Run instructions:
+1. Download the program zip file and extract to a folder. (link)
+	a. v5autoconfig.py = main script
+	b. datav5config.csv = csv file for config settings
+	c. docuv5autoconfig.txt = documentation, instructions
+2. Check the csv file (datav5config.csv) if config settings are correct.
+	a. Edit using a text editor (not excel).
+	b. Save.
+3. Run the script.
+	a. Open a command prompt.
+	b. Navigate to the location of the script.
+	c. Enter "python v5autoconfig.py"
+	d. Follow the instructions on the screen.
+	e. Wait for the process to finish. Check for errors.
+4. Verify using Arduino Serial Monitor.
+
+###########################################
+CSV file contents (datav5config.csv):
+
+Columns
+1. ConfigParameters = name of parameter to be updated
+2. Update = selects the parameters to be configured [1 or 0]
+3. Value = data to be loaded to the config parameters
+
+Allowed values:
+realtimeclock values = [systemtime, YYYY-MM-DD HH:MM:SS (ex: 2020-12-31 17:55:20)]
+
+servernumber values = [GLOBE, SMART]
+
+loggerversion values = [0-7]
+[0] Sendng data using GSM only
+[1] Version 5 datalogger LoRa with GSM
+[2] LoRa transmitter for version 5 datalogger
+[3] Gateway Mode with only ONE LoRa transmitter
+[4] Gateway Mode with TWO LoRa transmitter
+[5] Gateway Mode with THREE LoRa transmitter
+[6] LoRa transmitter for Raspberry Pi
+[7] Sends rain gauge data via LoRa
+
+sendingtime values = [0-5]
+[0] Alarm for every 0 and 30 minutes interval
+[1] Alarm for every 5 and 35 minutes interval
+[2] Alarm for every 10 and 40 minutes interval
+[3] Alarm for every 15 and 45 minutes interval
+[4] Alarm for every 10 minutes interval
+[5] Alarm for every 5,15,25. . .  minutes interval
+
+###########################################
+Troubleshooting:
+
+Problem: Error when running the script.
+Solution: 
+1. Delete the old code, then download a new one and run again.
+2. Check python version. Use python version 3.
+3. Check if correct v5 datalogger arduino code is programmed to the device.
+4. Check connections (cable connector, usb ports).
+
+Take note or screenshot the error. Create a trello card and inform HI-CD team.
