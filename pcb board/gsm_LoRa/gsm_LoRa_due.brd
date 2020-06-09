@@ -8,8 +8,8 @@
 </settings>
 <grid distance="2" unitdist="mil" unit="mil" style="lines" multiple="1" display="yes" altdistance="1" altunitdist="mil" altunit="mil"/>
 <layers>
-<layer number="1" name="Top" color="4" fill="1" visible="no" active="yes"/>
-<layer number="16" name="Bottom" color="1" fill="1" visible="no" active="yes"/>
+<layer number="1" name="Top" color="4" fill="1" visible="yes" active="yes"/>
+<layer number="16" name="Bottom" color="1" fill="1" visible="yes" active="yes"/>
 <layer number="17" name="Pads" color="2" fill="1" visible="yes" active="yes"/>
 <layer number="18" name="Vias" color="2" fill="1" visible="yes" active="yes"/>
 <layer number="19" name="Unrouted" color="6" fill="1" visible="yes" active="yes"/>
@@ -229,6 +229,7 @@
 <text x="24.2824" y="45.1612" size="0.6096" layer="25">Champagne Datalogger</text>
 <text x="26.162" y="43.9928" size="0.6096" layer="25">03-02-2020</text>
 <text x="15.8496" y="0.8128" size="0.8128" layer="25">bypass</text>
+<dimension x1="24.7396" y1="33.02" x2="26.3144" y2="51.1048" x3="-8.8392" y3="42.0624" textsize="1.778" layer="1" dtype="vertical"/>
 </plain>
 <libraries>
 <library name="eagle-ltspice" urn="urn:adsk.eagle:library:217">
