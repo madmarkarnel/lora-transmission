@@ -165,26 +165,22 @@ def check_csv_integrity(row):
 	pass
 
 def main():
-	debug_mode = 0
 	serial_clear()
 	try:
-		while True:
-			if isfound("Press 'C' to go DEBUG mode!"):
-				swrite("C")
-				serial_clear()
-				debug_mode = 1
-			if debug_mode:
-				if conf['realtimeclock'][0]:
-					set_datetime()
-				if conf['servernumber'][0]:
-					set_servernum(conf['servernumber'][1])
-				if conf['loggerversion'][0]:
-					set_loggerversion(conf['loggerversion'][1])
-				if conf['sendingtime'][0]:
-					set_sendingtime(conf['sendingtime'][1])
-				swrite("E")
-				print('\n',"*"*10,"V5 AutoConfig Finished.","*"*10)
-				break
+		while not isfound("----------"):
+			swrite("C",1)
+		serial_clear()
+		print('-'*10);
+		if conf['realtimeclock'][0]:
+			set_datetime()
+		if conf['servernumber'][0]:
+			set_servernum(conf['servernumber'][1])
+		if conf['loggerversion'][0]:
+			set_loggerversion(conf['loggerversion'][1])
+		if conf['sendingtime'][0]:
+			set_sendingtime(conf['sendingtime'][1])
+		swrite("E")
+		print('\n',"*"*10,"V5 AutoConfig Finished.","*"*10)
 	except Exception as e:
 		print("Error:", e)
 	except KeyboardInterrupt:
