@@ -79,7 +79,7 @@ def set_servernum(network):
 	serial_clear()
 
 def set_loggerversion(logver):
-	#J...C...servernum
+	#J...C...loggerversion
 	print("\nStart process: Updating logger version")
 	serial_clear()
 	swrite("J")
@@ -98,7 +98,7 @@ def set_loggerversion(logver):
 	serial_clear()
 
 def set_sendingtime(sendingtime):
-	#D...C...servernum
+	#D...C...sendingtime
 	print("\nStart process: Updating sending time")
 	serial_clear()
 	swrite("D")
@@ -110,6 +110,63 @@ def set_sendingtime(sendingtime):
 	swrite(sendingtime)
 	time.sleep(1)
 	print ("End process: Sending time succesfully updated!")
+	serial_clear()
+	while not isfound("----------"):
+		swrite("C",1)
+	serial_clear()
+
+def set_mcupassword(pw):
+	#K...C...password
+	print("\nStart process: Updating mcu password")
+	serial_clear()
+	swrite("K")
+	while not isfound("Enter C to change:"):
+		time.sleep(1)
+	swrite("C")
+	time.sleep(1)
+	print("MCU password:", pw)
+	swrite(pw)
+	time.sleep(1)
+	print ("End process: MCU password succesfully updated!")
+	serial_clear()
+	while not isfound("----------"):
+		swrite("C",1)
+	serial_clear()
+
+def set_loggernames():
+	#N...C...logname
+	lognames = conf['loggernames'][1].split(' ')
+	print("\nStart process: Updating datalogger names")
+	serial_clear()
+	swrite("N")
+	while not isfound("Enter C to change:"):
+		time.sleep(1)
+	swrite("C")
+	time.sleep(1)
+	sread(1)
+	for logname in lognames:
+		swrite(logname.upper())
+		sread(1)
+	time.sleep(1)
+	print ("End process: Names succesfully updated!")
+	serial_clear()
+	while not isfound("----------"):
+		swrite("C",1)
+	serial_clear()
+
+def set_command(cmd):
+	#Z...C...cmd
+	print("\nStart process: Updating sensor command")
+	serial_clear()
+	swrite("Z")
+	while not isfound("Enter C to change:"):
+		time.sleep(1)
+	swrite("C")
+	time.sleep(1)
+	print("Command:", cmd)
+	swrite(cmd)
+	time.sleep(1)
+	print ("End process: Command succesfully updated!")
 	serial_clear()
 	while not isfound("----------"):
 		swrite("C",1)
@@ -152,7 +209,7 @@ def loadconfig(printer=True):
 		for row in reader:
 			#print(row)
 			#check_csv_integrity(row)
-			cnf[row[0].lower().strip()] = [int(row[1].strip()), row[2].lower().strip()] 
+			cnf[row[0].lower().strip()] = [int(row[1].strip()), row[2].strip()] 
 		if printer:
 			print("-"*35,"\n","Config Settings")
 			for key in cnf.keys():
@@ -161,6 +218,29 @@ def loadconfig(printer=True):
 			print("-"*35, "\n")
 		return cnf
 
+def check_sensorcommand():
+	if conf['sensorcommand'][1].upper() in ['ARQCMD6T', 'ARQCMD6S']:
+		return True
+	else:
+		return False
+
+def check_logver_logname():
+	logver = conf['loggerversion'][1]
+	lognames = conf['loggernames'][1].split(' ')
+	if logver in ['1', '3']:
+		logname_count = 2
+	elif logver == '4':
+		logname_count = 3
+	elif logver == '5':
+		logname_count = 4
+	else:
+		logname_count = 1
+	if len(lognames) == logname_count:
+		#print(lognames)
+		return True
+	else:
+		return False
+	
 def check_csv_integrity(row):
 	pass
 
@@ -173,12 +253,22 @@ def main():
 		print('-'*10);
 		if conf['realtimeclock'][0]:
 			set_datetime()
-		if conf['servernumber'][0]:
-			set_servernum(conf['servernumber'][1])
+		if conf['servernetwork'][0]:
+			set_servernum(conf['servernetwork'][1].lower())
 		if conf['loggerversion'][0]:
 			set_loggerversion(conf['loggerversion'][1])
 		if conf['sendingtime'][0]:
 			set_sendingtime(conf['sendingtime'][1])
+		if conf['sensorcommand'][0]:
+			if check_sensorcommand():
+				set_command(conf['sensorcommand'][1].upper())
+		if conf['mcupassword'][0]:
+			set_mcupassword(conf['mcupassword'][1])
+		if conf['loggernames'][0]:
+			if check_logver_logname():
+				set_loggernames()
+			else:
+				print("\nCheck number of logger names")
 		swrite("E")
 		print('\n',"*"*10,"V5 AutoConfig Finished.","*"*10)
 	except Exception as e:

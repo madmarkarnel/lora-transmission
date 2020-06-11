@@ -33,11 +33,11 @@ Columns
 3. Value = data to be loaded to the config parameters
 
 Allowed values:
-realtimeclock values = [systemtime, YYYY-MM-DD HH:MM:SS (ex: 2020-12-31 17:55:20)]
+a. realtimeclock values = [systemtime, YYYY-MM-DD HH:MM:SS (ex: 2020-12-31 17:55:20)]
 
-servernumber values = [GLOBE, SMART]
+b. servernetwork values = [GLOBE, SMART]
 
-loggerversion values = [0-7]
+c. loggerversion values = [0-7]
 [0] Sendng data using GSM only
 [1] Version 5 datalogger LoRa with GSM
 [2] LoRa transmitter for version 5 datalogger
@@ -47,13 +47,27 @@ loggerversion values = [0-7]
 [6] LoRa transmitter for Raspberry Pi
 [7] Sends rain gauge data via LoRa
 
-sendingtime values = [0-5]
+d. sendingtime values = [0-5]
 [0] Alarm for every 0 and 30 minutes interval
 [1] Alarm for every 5 and 35 minutes interval
 [2] Alarm for every 10 and 40 minutes interval
 [3] Alarm for every 15 and 45 minutes interval
 [4] Alarm for every 10 minutes interval
 [5] Alarm for every 5,15,25. . .  minutes interval
+
+e. loggernames = dependency on logger version
+if loggerversion = 0, input 1 logger name
+if loggerversion = 1, input 2 logger names (gateway+sensor)
+if loggerversion = 2, input 1 logger name
+if loggerversion = 3, input 2 logger names (gateway+sensor)
+if loggerversion = 4, input 3 logger names (gateway+sensors)
+if loggerversion = 5, input 4 logger names (gateway+sensors)
+if loggerversion = 6, input 1 logger name
+if loggerversion = 7, input 1 logger name
+
+f. sensorcommand = [ARQCMD6T, ARQCMD6S]
+
+g. mcupassword = [any text]
 
 ###########################################
 Troubleshooting:
