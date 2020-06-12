@@ -315,16 +315,20 @@ void gsmManualNetworkConnect()
   simNetCommand.toCharArray(command, 25);
   Serial.println(command);
 
-  gsmSerialFlush();
-  GSMSerial.write(command);
-  delay(1000);
-  if (gsmReadOK())
+  for (int i = 0; i < 5; i++)
   {
-    Serial.println("OK received.");
-  }
-  else
-  {
-    Serial.println("Command failed.");
+    gsmSerialFlush();
+    GSMSerial.write(command);
+    delay(1000);
+    if (gsmReadOK())
+    {
+      Serial.println("Command success!");
+      break;
+    }
+    else
+    {
+      Serial.println("Command failed.");
+    }
   }
 }
 
@@ -372,19 +376,30 @@ void resetGSM()
 void turn_ON_GSM()
 {
   digitalWrite(GSMPWR, HIGH);
-  Serial.println("Turning ON GSM . . .");
-  delay(2000);
-  GSMSerial.write("AT\r");  //gsm initialization
-  gsmReadOK();
+  Serial.print("Turning ON GSM ");
+  delay(5000);
+  for (int i = 0; i < 5; i++)
+  {
+    GSMSerial.write("AT\r");  //gsm initialization
+    // if (gsmReadOK())
+    // {
+    //   Serial.println("GSM connection success!");
+    //   break;
+    // }
+    Serial.print(". ");
+    delay(500);
+  }
   GSMSerial.write("ATE0\r");  //turn off echo
   gsmReadOK();
-
-  gsmManualNetworkConnect();
+  do
+  {
+    gsmManualNetworkConnect();
+  } while (getCSQ() == "99" || getCSQ == 0);
 }
 
 void turn_OFF_GSM()
 {
-  delay(1000);
+  delay(5000);
   digitalWrite(GSMPWR, LOW);
   Serial.println("Turning OFF GSM . . .");
 }

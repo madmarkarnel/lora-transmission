@@ -52,12 +52,13 @@ Modified: 29 May 2020
 #define RFM95_RST 4
 #define RFM95_INT 3
 
-#define RF95_FREQ 433.0    // Change to 434.0 or other frequency, must match RX's freq!
-#define DATALEN 200        //max size of dummy length
-#define LORATIMEOUT 500000 //260 000 ~4 minutes 20 seconds timeout
-#define LORATIMEOUTMODE2 900000
-#define DUETIMEOUT 200000 //260 000 ~4 minutes 20 seconds timeout
-#define RAININT A4        //rainfall interrupt pin A4
+#define RF95_FREQ 433.0         // Change to 434.0 or other frequency, must match RX's freq!
+#define DATALEN 200             //max size of dummy length
+#define LORATIMEOUT 500000      // 8.33 minutes delay
+#define LORATIMEOUTMODE2 900000 // 15.0 mnutes
+#define DUETIMEOUT 210000       // 3.50 minutes timeout
+#define DUEDELAY 60000          // 1.0 minute delay
+#define RAININT A4              //rainfall interrupt pin A4
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
@@ -73,6 +74,7 @@ uint8_t len2 = sizeof(buf);
 char received[250];
 
 char streamBuffer[250]; //store message
+char rssiString[250];
 int customDueFlag = 0;  //for data gathering
 int sendToLoRa = 0;
 uint8_t tx_RSSI = 0;   //tx rssi of sensor A
@@ -118,7 +120,7 @@ typedef struct
   char senslopeCommand[50];
   char stationName[10];
 } Senslope;
-Senslope sensCommand;
+Senslope sensCommand; 
 
 typedef struct
 {
@@ -195,9 +197,6 @@ void setup()
   setAlarmEvery30(alarmFromFlashMem()); //rtc alarm settings
   rf95.sleep();
 
-  turn_ON_GSM();
-  // sleepGSM();
-
   /*Enter DEBUG mode within 10 seconds*/
   Serial.println("Press 'C' to go DEBUG mode!");
   unsigned long serStart = millis();
@@ -216,7 +215,16 @@ void setup()
       serial_flag = 1;
     }
   }
-
+/*
+  if (get_logger_version() == 2 || get_logger_version() == 6 || get_logger_version() == 7)
+  {
+    //
+  }
+  else
+  {
+    turn_ON_GSM();
+  }
+  */
   flashLed(LED_BUILTIN, 5, 100);
 }
 
@@ -234,18 +242,12 @@ void loop()
     if (get_logger_version() == 1)
     {
       turn_ON_GSM();
-
       get_Due_Data(1, get_serverNum_from_flashMem());
-
-      send_rain_tips();
-      resetRainTips();
-
+      send_rain_data(0);
       if (getSensorDataFlag == true && OperationFlag == true)
       {
         receive_lora_data(1);
       }
-
-      rf95.sleep();
       attachInterrupt(RTCINTPIN, wake, FALLING);
       turn_OFF_GSM();
     }
@@ -253,18 +255,14 @@ void loop()
     {
       //LoRa transmitter of version 5 datalogger
       get_Due_Data(2, get_serverNum_from_flashMem());
+      attachInterrupt(RTCINTPIN, wake, FALLING);
     }
     else if (get_logger_version() == 3)
     {
       //only one trasmitter
       turn_ON_GSM();
-
+      send_rain_data(0);
       receive_lora_data(3);
-
-      send_rain_tips();
-      resetRainTips();
-
-      rf95.sleep();
       attachInterrupt(RTCINTPIN, wake, FALLING);
       turn_OFF_GSM();
     }
@@ -272,12 +270,8 @@ void loop()
     {
       //Two transmitter
       turn_ON_GSM();
+      send_rain_data(0);
       receive_lora_data(4);
-
-      send_rain_tips();
-      resetRainTips();
-
-      rf95.sleep();
       attachInterrupt(RTCINTPIN, wake, FALLING);
       turn_OFF_GSM();
     }
@@ -285,12 +279,8 @@ void loop()
     {
       // Three transmitter
       turn_ON_GSM();
+      send_rain_data(0);
       receive_lora_data(5);
-
-      send_rain_tips();
-      resetRainTips();
-
-      rf95.sleep();
       attachInterrupt(RTCINTPIN, wake, FALLING);
       turn_OFF_GSM();
     }
@@ -298,31 +288,37 @@ void loop()
     {
       //default arabica LoRa transmitter
       get_Due_Data(0, get_serverNum_from_flashMem());
+      attachInterrupt(RTCINTPIN, wake, FALLING);
     }
     else if (get_logger_version() == 7)
     {
       // Sends rain gauge data via LoRa
       get_Due_Data(0, get_serverNum_from_flashMem());
       delay(1000);
-      build_message(1);
-      send_thru_lora(dataToSend);
+      send_rain_data(1);
+      attachInterrupt(RTCINTPIN, wake, FALLING);
+    }
+    else if (get_logger_version() == 8)
+    {
+      // Sends rain gauge data via LoRa
+      get_Due_Data(0, get_serverNum_from_flashMem());
+      // delay(1000);
+      // send_rain_data(1);
+      // send_thru_lora(dataToSend);
+      attachInterrupt(RTCINTPIN, wake, FALLING);
     }
     else
     {
       //default arQ like sending
-      // turn_ON_GSM();
-      // wakeGSM();
+      turn_ON_GSM();
+      send_rain_data(0);
       get_Due_Data(1, get_serverNum_from_flashMem());
-
-      send_rain_tips();
-      resetRainTips();
-
-      rf95.sleep();
       attachInterrupt(RTCINTPIN, wake, FALLING);
-      // turn_OFF_GSM();
-      // sleepGSM();
+      turn_OFF_GSM();
+      sleepGSM();
     }
 
+    rf95.sleep();
     getSensorDataFlag = false;
     OperationFlag = false;
   }
@@ -472,11 +468,11 @@ void receive_lora_data(uint8_t mode)
 {
   int count = 0;
   int count2 = 0;
-  bool tx_LoRa_flag = true;
   unsigned long start = millis();
-  do
+  Serial.println("waiting for LoRa data . . .");
+  while (rcv_LoRa_flag == 0)
   {
-    if (mode == 4)
+    if (mode == 4 || mode == 5)
     {
       // timeOut in case walang makuhang data LoRa transmitter ~15 minutes
       if ((millis() - start) > LORATIMEOUTMODE2)
@@ -484,7 +480,6 @@ void receive_lora_data(uint8_t mode)
         start = millis();
         // send gateway rssi values if no received from transmitter
         get_rssi(get_logger_version());
-        send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
         rcv_LoRa_flag = 1;
       }
     }
@@ -495,6 +490,7 @@ void receive_lora_data(uint8_t mode)
       {
         Serial.println("Time out reached.");
         start = millis();
+        get_rssi(get_logger_version());
         rcv_LoRa_flag = 1;
       }
     }
@@ -513,6 +509,7 @@ void receive_lora_data(uint8_t mode)
 
         if (strstr(received, ">>"))
         { /*NOT LoRa: 0, 2, 6, 7*/
+          flashLed(LED_BUILTIN, 3, 60);
           if (mode == 1 || mode == 3 || mode == 4 || mode == 5)
           {
             /*remove 1st & 2nd character*/
@@ -595,8 +592,6 @@ void receive_lora_data(uint8_t mode)
               Serial.println(txVoltageB);
               delay(500);
               get_rssi(get_logger_version());
-              delay(200);
-              send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
               count2 = 0;
               rcv_LoRa_flag = 1;
             }
@@ -638,11 +633,7 @@ void receive_lora_data(uint8_t mode)
               parse_voltage(received).toCharArray(txVoltageC, sizeof(txVoltageC));
               Serial.print("TX Voltage C: ");
               Serial.println(txVoltageC);
-              delay(500);
-
               get_rssi(get_logger_version());
-              delay(200);
-              send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
               count2 = 0;
               rcv_LoRa_flag = 1;
             }
@@ -654,11 +645,10 @@ void receive_lora_data(uint8_t mode)
             Serial.print("RSSI: ");
             Serial.println(tx_RSSI);
             //  parse voltage, MADTB*VOLT:12.33*200214111000
+            parse_voltage(received).toCharArray(txVoltage, sizeof(txVoltage));
             Serial.print("Received Voltage: ");
             Serial.println(parse_voltage(received));
-            delay(500);
             get_rssi(get_logger_version());
-            send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
             rcv_LoRa_flag = 1;
           }
         }
@@ -669,15 +659,15 @@ void receive_lora_data(uint8_t mode)
         rcv_LoRa_flag = 1;
       }
     }
-  } while (rcv_LoRa_flag == 0); //if NOT same with condition Loop will exit
+  } //while (rcv_LoRa_flag == 0); //if NOT same with condition Loop will exit
 
   count = 0;
   count2 = 0;
   tx_RSSI = 0;
   tx_RSSI_B = 0;
   rcv_LoRa_flag = 0;
-  tx_LoRa_flag = false;
   getSensorDataFlag = false;
+  flashLed(LED_BUILTIN, 3, 80);
 }
 
 void wake()
@@ -694,7 +684,8 @@ void ringISR()
 }
 
 /**GATEWAY*RSSI,MAD,MADTA,rssi,voltage,MADTB,,,*200212141406 
-  *main logger name, MARTA, MARTB, . . .
+  *main logger name, MADTA, MADTB, . . .
+  *send data to gsm
 */
 void get_rssi(uint8_t mode)
 {
@@ -715,45 +706,51 @@ void get_rssi(uint8_t mode)
   loggerName.remove(3);
   loggerName.toCharArray(logger_name, 200);
 
-  for (int i = 0; i < 200; i++)
-    dataToSend[i] = 0;
-  strncpy(dataToSend, "GATEWAY*RSSI,", 13);
-  strncat(dataToSend, logger_name, sizeof(logger_name));
-  strncat(dataToSend, ",", 1);
-  strncat(dataToSend, get_logger_B_from_flashMem(), 20);
-  strncat(dataToSend, ",", 1);
-  strncat(dataToSend, convertRssi, 100);
-  strncat(dataToSend, ",", 1);
-  strncat(dataToSend, txVoltage, sizeof(txVoltage)); //voltage working 02-17-2020
+  for (int i = 0; i < 250; i++)
+    rssiString[i] = 0;
+  strncpy(rssiString, "GATEWAY*RSSI,", 13);
+  strncat(rssiString, logger_name, sizeof(logger_name));
+  strncat(rssiString, ",", 1);
+  strncat(rssiString, get_logger_B_from_flashMem(), 20);
+  strncat(rssiString, ",", 1);
+  strncat(rssiString, convertRssi, 100);
+  strncat(rssiString, ",", 1);
+  strncat(rssiString, txVoltage, sizeof(txVoltage)); //voltage working 02-17-2020
   // strncat(dataToSend, parse_voltage(received), sizeof(parse_voltage(received)));
   if (mode == 4)
   {
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, get_logger_C_from_flashMem(), 20);
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, convertRssiB, 100);
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, txVoltageB, sizeof(txVoltageB)); //voltage working 02-17-2020
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, get_logger_C_from_flashMem(), 20);
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, convertRssiB, 100);
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, txVoltageB, sizeof(txVoltageB)); //voltage working 02-17-2020
     // strncat(dataToSend, parse_voltage_B(received), sizeof(parse_voltage_B(received)));
   }
-  if (mode == 5)
+  else if (mode == 5)
   {
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, get_logger_C_from_flashMem(), 20);
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, convertRssiB, 100);
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, txVoltageB, sizeof(txVoltageB)); //voltage working 02-17-2020
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, get_logger_D_from_flashMem(), 20); //sensorD
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, convertRssiC, 100);
-    strncat(dataToSend, ",", 1);
-    strncat(dataToSend, txVoltageC, sizeof(txVoltageC));
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, get_logger_C_from_flashMem(), 20);
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, convertRssiB, 100);
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, txVoltageB, sizeof(txVoltageB)); //voltage working 02-17-2020
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, get_logger_D_from_flashMem(), 20); //sensorD
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, convertRssiC, 100);
+    strncat(rssiString, ",", 1);
+    strncat(rssiString, txVoltageC, sizeof(txVoltageC));
   }
-  strncat(dataToSend, ",*", 2);
-  strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
-  Serial.println(dataToSend);
+  else
+  {
+    strncat(rssiString, ",*", 2);
+    strncat(rssiString, Ctimestamp, sizeof(Ctimestamp));
+    // Serial.println(rssiString);
+  }
+  delay(500);
+  send_thru_gsm(rssiString, get_serverNum_from_flashMem());
+  delay(1000);
 }
 
 /**
@@ -838,7 +835,7 @@ char *get_password_from_flashMem()
  * 0 - default for GSM sending
  * 1 - send to LoRa with >> and << added to data
 */
-void build_message(uint8_t sendTo)
+void send_rain_data(uint8_t sendTo)
 {
   char csq[5];
   char temp[6];
@@ -879,6 +876,17 @@ void build_message(uint8_t sendTo)
   {
     strncat(dataToSend, "<<", 2);
   }
+  delay(500);
+  if (sendTo == 1)
+  {
+    send_thru_lora(dataToSend);
+  }
+  else
+  {
+    send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
+    delay(500);
+    resetRainTips();
+  }
 }
 
 void flashLed(int pin, int times, int wait)
@@ -902,7 +910,7 @@ char *read_batt_vol(uint8_t ver)
   dtostrf((BatteryVoltage(ver)), 4, 2, volt);
   readTimeStamp();
 
-  if (ver == 0)
+  if (ver == 6)
   {
     strncpy(voltMessage, ">>", 2);
   }
@@ -915,7 +923,7 @@ char *read_batt_vol(uint8_t ver)
   strncat(voltMessage, "*VOLT:", 7);
   strncat(voltMessage, volt, sizeof(volt));
   strncat(voltMessage, "*", 1);
-  if (ver == 0)
+  if (ver == 6)
   {
     strncat(voltMessage, Ctimestamp, sizeof(Ctimestamp));
     strncat(voltMessage, "<<", 2);
@@ -998,8 +1006,13 @@ void getPwrdFromMemory()
 void get_Due_Data(uint8_t mode, String serverNum)
 {
   unsigned long start = millis();
-  readTimeStamp();
 
+  /*Serial.println("starting delay please wait . . .");
+  // delay 1 minute before getting due data
+  delay(DUEDELAY);
+  Serial.println("DUE delay reached!");*/
+
+  readTimeStamp();
   turn_ON_due(get_logger_version());
   delay(500);
 
@@ -1082,12 +1095,15 @@ void get_Due_Data(uint8_t mode, String serverNum)
       }*/
       Serial.println("Done getting DUE data!");
       streamBuffer[0] = '\0';
-      flashLed(LED_BUILTIN, 4, 90);
       customDueFlag = 1;
     }
   }
+  if (mode == 2 || mode == 6 || mode == 7 || mode == 8)
+  {
+    send_thru_lora(read_batt_vol(mode));
+  }
   turn_OFF_due(get_logger_version());
-
+  flashLed(LED_BUILTIN, 4, 90);
   customDueFlag = 0;
   getSensorDataFlag = true;
 }
@@ -1186,10 +1202,13 @@ void resetRainTips()
 
 void send_rain_tips()
 {
-  build_message(0);
-  delay(100);
-  send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
-  // delay(50);
+  // delay(500);
+  send_rain_data(0);
+  // delay(500);
+  // send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
+  // delay(500);
+  // resetRainTips();
+  // delay(1500);
 }
 
 String parse_voltage(char *toParse)

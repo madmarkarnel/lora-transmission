@@ -96,6 +96,7 @@ void getAtcommand()
     delay(75);
     rtc.clearINTStatus(); // needed to re-trigger rtc
     debug_flag = 0;
+    turn_OFF_GSM();
   }
   else if (command == "F")
   {
@@ -166,8 +167,7 @@ void getAtcommand()
   }
   else if (command == "M")
   {
-    build_message(1);
-    send_thru_lora(dataToSend);
+    send_rain_data(1);
   }
   else if (command == "N")
   {
@@ -184,7 +184,7 @@ void getAtcommand()
       Serial.println(get_logger_A_from_flashMem());
       Serial.print("Sensor Name A: ");
       Serial.println(get_logger_B_from_flashMem());
-    }    
+    }
     else if (get_logger_version() == 4)
     {
       Serial.print("Gateway name: ");
@@ -193,7 +193,7 @@ void getAtcommand()
       Serial.println(get_logger_B_from_flashMem());
       Serial.print("Sensor Name B: ");
       Serial.println(get_logger_C_from_flashMem());
-    }    
+    }
     else if (get_logger_version() == 5)
     {
       Serial.print("Gateway name: ");
@@ -206,9 +206,11 @@ void getAtcommand()
       Serial.println(get_logger_D_from_flashMem());
     }
     else
-    {
+    { // 2; 6; 7
       Serial.print("Gateway sensor name: ");
       Serial.println(get_logger_A_from_flashMem());
+      // Serial.print("Remote sensor name: ");
+      // Serial.println(get_logger_B_from_flashMem());
     }
     // Serial.print("Sensor Name A: ");
     // Serial.println(get_logger_A_from_flashMem());
@@ -277,8 +279,11 @@ void getAtcommand()
   }
   else if (command == "U")
   {
+    turn_ON_GSM();
     Serial.println("sending rain gauge data . . .");
-    send_rain_tips();
+    send_rain_data(0);
+    get_rssi(get_logger_version());
+    turn_OFF_GSM();
   }
   else if (command == "V")
   {
@@ -384,6 +389,7 @@ void setLoggerVersion()
   Serial.println("[5] Gateway Mode with THREE LoRa transmitter");
   Serial.println("[6] LoRa transmitter for Raspberry Pi"); //TX LoRa
   Serial.println("[7] Sends rain gauge data via LoRa");    //TX LoRa
+  Serial.println("[8] LoRa dummy transmitter");    //TX LoRa
   delay(1000);
   while (!Serial.available())
   {
@@ -513,6 +519,7 @@ void inputLoggerNames()
   }
   else
   {
+    /*
     Serial.print("Input name of gateway SENSOR: ");
     String inputLoggerA = Serial.readStringUntil('\n');
     Serial.println(inputLoggerA);
@@ -529,6 +536,16 @@ void inputLoggerNames()
     // inputLoggerB.toCharArray(loggerName.sensorB, 10);
     // inputLoggerC.toCharArray(loggerName.sensorC, 10);
     // inputLoggerD.toCharArray(loggerName.sensorD, 10);
+    flashLoggerName.write(loggerName);
+    */
+    Serial.print("Input name of SENSOR: ");
+    String inputLoggerA = Serial.readStringUntil('\n');
+    Serial.println(inputLoggerA);
+    // Serial.print("Input name of remote SENSOR: ");
+    // String inputLoggerB = Serial.readStringUntil('\n');
+    // Serial.println(inputLoggerB);
+    inputLoggerA.toCharArray(loggerName.sensorA, 10);
+    // inputLoggerB.toCharArray(loggerName.sensorB, 10);
     flashLoggerName.write(loggerName);
   }
 }
