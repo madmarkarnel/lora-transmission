@@ -16,7 +16,7 @@ def list_comports():
 def comport_setup():
 	input("Unplug the v5 device. (Press Enter to continue)")
 	get_comport1 = list_comports()
-	print("Isaksak sa usb port ang v5 device.")
+	print("Plug in the v5 device.")
 	while True:
 		time.sleep(0.5)
 		get_comport2 = list_comports()
@@ -29,148 +29,95 @@ def comport_setup():
 	print(comport)
 	return comport
 
-def set_datetime():
+def set_datetime(ts):
 	#S...C...timestamp
 	print("\nStart process: Updating timestamp")
+	waitread("S", False, "Enter C to change:", 10, 1)
+	swrite("C", 1)
+	if ts == 'SYSTEMTIME':
+		timeStamp = dt.today().strftime("%Y,%m,%d,%H,%M,%S,%w")
+	else:
+		timeStamp = dt.strptime(ts,'%Y-%m-%d %H:%M:%S').strftime("%Y,%m,%d,%H,%M,%S,%w")
 	serial_clear()
-	swrite("S")
-	while not isfound("Enter C to change:"):
-		time.sleep(1)
-	swrite("C")
-	time.sleep(1)
-	timeStamp = dt.today().strftime("%Y,%m,%d,%H,%M,%S,%w")
-	serial_clear()
-	swrite(timeStamp)
-	time.sleep(1)
+	swrite(timeStamp, 1)
 	readout = ser.read(12)
 	pcTs = timeStamp
 	mcuTs = readout.decode('ascii')
 	print ("PC timestamp: ", pcTs)
 	print ("MCU timestamp: ", mcuTs)
 	print ("End process: Timestamp succesfully updated!")
-	serial_clear()
-	while not isfound("----------"):
-		swrite("C",1)
-	serial_clear()
+	waitread("C", True, "----------", 5, 1)
 
 def set_servernum(network):
 	#F...C...servernum
-	if 'globe' in network:
+	if network == 'GLOBE':
 		servernum = "639175972526"
-	elif 'smart' in network:
+	elif network == 'SMART':
 		servernum = "639088125642"
 	else:
 		return
 	print("\nStart process: Updating server number")
-	serial_clear()
-	swrite("F")
-	while not isfound("Enter C to change:"):
-		time.sleep(1)
-	swrite("C")
-	time.sleep(1)
+	waitread("F", False, "Enter C to change:", 10, 1)
+	swrite("C", 1)
 	print("Server Number:",servernum)
 	serial_clear()
-	swrite(servernum)
-	time.sleep(1)
+	swrite(servernum, 1)
 	print ("End process: Server number succesfully updated!")
-	serial_clear()
-	while not isfound("----------"):
-		swrite("C",1)
-	serial_clear()
+	waitread("C", True, "----------", 5, 1)
 
 def set_loggerversion(logver):
 	#J...C...loggerversion
 	print("\nStart process: Updating logger version")
-	serial_clear()
-	swrite("J")
-	while not isfound("Enter C to change:"):
-		time.sleep(1)
-	swrite("C")
-	time.sleep(1)
+	waitread("J", False, "Enter C to change:", 10, 1)
+	swrite("C", 1)
 	print("Logger version:",logver)
 	serial_clear()
-	swrite(logver)
-	time.sleep(1)
+	swrite(logver, 1)
 	print ("End process: Logger version succesfully updated!")
-	serial_clear()
-	while not isfound("----------"):
-		swrite("C",1)
-	serial_clear()
+	waitread("C", True, "----------", 5, 1)
 
 def set_sendingtime(sendingtime):
 	#D...C...sendingtime
 	print("\nStart process: Updating sending time")
-	serial_clear()
-	swrite("D")
-	while not isfound("Enter C to change:"):
-		time.sleep(1)
-	swrite("C")
-	time.sleep(1)
+	waitread("D", False, "Enter C to change:", 10, 1)
+	swrite("C", 1)
 	print("Sending time:", sendingtime)
-	swrite(sendingtime)
-	time.sleep(1)
+	swrite(sendingtime, 1)
 	print ("End process: Sending time succesfully updated!")
-	serial_clear()
-	while not isfound("----------"):
-		swrite("C",1)
-	serial_clear()
+	waitread("C", True, "----------", 5, 1)
 
 def set_mcupassword(pw):
 	#K...C...password
 	print("\nStart process: Updating mcu password")
-	serial_clear()
-	swrite("K")
-	while not isfound("Enter C to change:"):
-		time.sleep(1)
-	swrite("C")
-	time.sleep(1)
+	waitread("K", False, "Enter C to change:", 10, 1)
+	swrite("C", 1)
 	print("MCU password:", pw)
-	swrite(pw)
-	time.sleep(1)
+	swrite(pw, 1)
 	print ("End process: MCU password succesfully updated!")
-	serial_clear()
-	while not isfound("----------"):
-		swrite("C",1)
-	serial_clear()
+	waitread("C", True, "----------", 5, 1)
 
 def set_loggernames():
 	#N...C...logname
 	lognames = conf['loggernames'][1].split(' ')
 	print("\nStart process: Updating datalogger names")
-	serial_clear()
-	swrite("N")
-	while not isfound("Enter C to change:"):
-		time.sleep(1)
-	swrite("C")
-	time.sleep(1)
-	sread(1)
+	waitread("N", False, "Enter C to change:", 10, 1)
+	swrite("C", 1)
+	sread(True)
 	for logname in lognames:
-		swrite(logname.upper())
-		sread(1)
-	time.sleep(1)
+		swrite(logname.upper(),1)
+		sread(True)
 	print ("End process: Names succesfully updated!")
-	serial_clear()
-	while not isfound("----------"):
-		swrite("C",1)
-	serial_clear()
+	waitread("C", True, "----------", 5, 1)
 
 def set_command(cmd):
 	#Z...C...cmd
 	print("\nStart process: Updating sensor command")
-	serial_clear()
-	swrite("Z")
-	while not isfound("Enter C to change:"):
-		time.sleep(1)
-	swrite("C")
-	time.sleep(1)
+	waitread("Z", False, "Enter C to change:", 10, 1)
+	swrite("C", 1)
 	print("Command:", cmd)
-	swrite(cmd)
-	time.sleep(1)
+	swrite(cmd, 1)
 	print ("End process: Command succesfully updated!")
-	serial_clear()
-	while not isfound("----------"):
-		swrite("C",1)
-	serial_clear()
+	waitread("C", True, "----------", 5, 1)
 
 def serial_clear(input = True, output = True):
 	if input:
@@ -199,6 +146,29 @@ def isfound(text):
 	#if readout: print(readout)
 	return True if text in readout else False
 
+def waitread(command, rptcmd, expectedout, timeout, increment):
+	timeout = max(0.2, timeout)
+	timeout = min(timeout, 20)
+	increment = max(0.1, increment)
+	increment = min(increment, timeout)
+	millicounter = 0
+	serial_clear()
+	swrite(command)
+	while millicounter < timeout:
+		time.sleep(increment)
+		millicounter += increment
+		if isfound(expectedout):
+			serial_clear()
+			return True
+		if rptcmd:
+			swrite(command)
+	serial_clear()
+	print("Error: Device is not responding.")
+	return False
+
+class CsvException(Exception):
+	pass
+
 def loadconfig(printer=True):
 	csvfile = "datav5config.csv"
 	cnf = dict()
@@ -208,21 +178,25 @@ def loadconfig(printer=True):
 		#print (header_row)
 		for row in reader:
 			#print(row)
-			#check_csv_integrity(row)
-			cnf[row[0].lower().strip()] = [int(row[1].strip()), row[2].strip()] 
+			if len(row) == 0 or row[0].lower().strip() == "" or row[0].lower().strip() == "configparameters":
+				continue
+			if check_csv_integrity(row) == False:
+				raise CsvException("CSV data error found.")
+			if row[0].lower().strip() in cnf:
+				print("Check duplicate configparameters.")
+				raise CsvException("CSV data error found.")
+			cnf[row[0].lower().strip()] = [int(row[1].strip()), row[2].strip()]
 		if printer:
 			print("-"*35,"\n","Config Settings")
 			for key in cnf.keys():
 				if cnf[key][0]:
 					print(f'{key}: {cnf[key][1]}')
 			print("-"*35, "\n")
-		return cnf
+	return cnf
 
-def check_sensorcommand():
-	if conf['sensorcommand'][1].upper() in ['ARQCMD6T', 'ARQCMD6S']:
-		return True
-	else:
-		return False
+def csvfinalcheck():
+	if check_logver_logname() == 0:
+		raise CsvException("CSV data error found.")
 
 def check_logver_logname():
 	logver = conf['loggerversion'][1]
@@ -239,10 +213,66 @@ def check_logver_logname():
 		#print(lognames)
 		return True
 	else:
+		print("Check logger name count.")
 		return False
-	
+
 def check_csv_integrity(row):
-	pass
+	if len(row) == 3:
+		if row[1].strip() in ['0', '1']:
+			if row[0].lower().strip() in ['realtimeclock', 'servernetwork', 'loggerversion', 'sendingtime', 'loggernames', 'sensorcommand', 'mcupassword']:
+				if row[0].lower().strip() == 'realtimeclock':
+					if ( row[2].lower().strip() == 'systemtime' ):
+						pass
+					else:
+						try:
+							dt.strptime(row[2].lower().strip(),'%Y-%m-%d %H:%M:%S')
+							pass
+						except Exception as e:
+							print(e, "Check realtimeclock value. Allowed values [systemtime, YYYY-MM-DD HH:MM:SS]")
+							return False
+				if row[0].lower().strip() == 'servernetwork':
+					if ( row[2].upper().strip() in ['GLOBE', 'SMART'] ):
+						pass
+					else:
+						print("Check servernetwork value. Allowed values [GLOBE, SMART]")
+						return False
+				if row[0].lower().strip() == 'loggerversion':
+					try:
+						int(row[2].strip())
+						pass
+					except Exception as e:
+						print(e, "Check loggerversion value.")
+						return False
+				if row[0].lower().strip() == 'sendingtime' :
+					try:
+						int(row[2].strip())
+						pass
+					except Exception as e:
+						print(e, "Check sendingtime value.")
+						return False
+				if row[0].lower().strip() == 'sensorcommand':
+					if ( row[2].upper().strip() in ['ARQCMD6T', 'ARQCMD6S'] ):
+						pass
+					else:
+						print("Check sensorcommand value.")
+						return False
+				if row[0].lower().strip() == 'mcupassword':
+					if ( len(row[2].upper().strip()) > 0 ):
+						pass
+					else:
+						print("Check mcupassword value.")
+						return False
+			else:
+				print("Check configparameters column.")
+				return False
+		else:
+			print("Check update column.")
+			return False
+	else:
+		print("Check data entries. Check for missing or excess commas. Remove blank rows.")
+		return False
+	#print("Done")
+	return True
 
 def main():
 	serial_clear()
@@ -252,23 +282,19 @@ def main():
 		serial_clear()
 		print('-'*10);
 		if conf['realtimeclock'][0]:
-			set_datetime()
+			set_datetime(conf['realtimeclock'][1].upper())
 		if conf['servernetwork'][0]:
-			set_servernum(conf['servernetwork'][1].lower())
+			set_servernum(conf['servernetwork'][1].upper())
 		if conf['loggerversion'][0]:
 			set_loggerversion(conf['loggerversion'][1])
 		if conf['sendingtime'][0]:
 			set_sendingtime(conf['sendingtime'][1])
 		if conf['sensorcommand'][0]:
-			if check_sensorcommand():
-				set_command(conf['sensorcommand'][1].upper())
+			set_command(conf['sensorcommand'][1].upper())
 		if conf['mcupassword'][0]:
 			set_mcupassword(conf['mcupassword'][1])
 		if conf['loggernames'][0]:
-			if check_logver_logname():
-				set_loggernames()
-			else:
-				print("\nCheck number of logger names")
+			set_loggernames()
 		swrite("E")
 		print('\n',"*"*10,"V5 AutoConfig Finished.","*"*10)
 	except Exception as e:
@@ -279,9 +305,14 @@ def main():
 		ser.close()
 
 print('\n',"*"*35,'\n',"*"*10,"V5 AUTOCONFIG","*"*10,'\n',"*"*35,'\n')
-conf = loadconfig()
-serport = comport_setup()
-ser = serial.Serial(serport, 115200)
-print("Started")
-time.sleep(1)
-main()
+try:
+	conf = loadconfig()
+	csvfinalcheck()
+	serport = comport_setup()
+	serbaud = 115200
+	ser = serial.Serial(serport, serbaud)
+	print("Started")
+	time.sleep(1)
+	main()
+except Exception as e:
+	print(e)

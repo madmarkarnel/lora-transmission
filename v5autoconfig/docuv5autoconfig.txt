@@ -6,10 +6,13 @@ V5 AUTOMATIC CONFIG SETUP (v5autoconfig.py)
 ###########################################
 Requirements:
 Python 3 on Windows
+Pyserial
+V5 Datalogger Module
+Micro USB connector
 
 ###########################################
 Run instructions:
-1. Download the program zip file and extract to a folder. (link)
+1. Download the program zip file and extract to a folder. (https://github.com/madmarkarnel/lora-transmission/v5autoconfig/v5autoconfig.zip)
 	a. v5autoconfig.py = main script
 	b. datav5config.csv = csv file for config settings
 	c. docuv5autoconfig.txt = documentation, instructions
@@ -38,7 +41,7 @@ a. realtimeclock values = [systemtime, YYYY-MM-DD HH:MM:SS (ex: 2020-12-31 17:55
 b. servernetwork values = [GLOBE, SMART]
 
 c. loggerversion values = [0-7]
-[0] Sendng data using GSM only
+[0] Sending data using GSM only
 [1] Version 5 datalogger LoRa with GSM
 [2] LoRa transmitter for version 5 datalogger
 [3] Gateway Mode with only ONE LoRa transmitter
