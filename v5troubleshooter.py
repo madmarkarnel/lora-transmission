@@ -79,6 +79,9 @@ def waitread(command, rptcmd, expectedout, timeout, increment, printer = False):
     print("Error: Device is not responding.")
     return False
 
+def get_logver():
+	return 0
+
 def proc_csq():
     print("\nStart process: Getting CSQ data")
     keyword = 'CSQ: '
@@ -101,6 +104,20 @@ def proc_csq():
             print(e)
             print(f"Invalid CSQ: {m0Csq}")
     print(csqs)
+    print ("End process: Done!")
+    waitread("C", True, "----------", 5, 1)
+
+def proc_sms():
+    print("\nStart process: Sending test SMS")
+    keyword = "Enter message to send: "
+    swrite("Y", 3)
+    data = sread()
+    if keyword in data:
+        swrite("V5 Test SMS", 5)
+		if isfound("Message sent!"):
+			print("Sent test SMS successfully.")
+		else:
+			print("Sending test SMS failed.")
     print ("End process: Done!")
     waitread("C", True, "----------", 5, 1)
 
@@ -150,10 +167,20 @@ def proc_senstrig():
     print ("End process: Done!")
     waitread("C", True, "----------", 5, 1)
 
+def has_gsm():
+	return True if get_logver() in [0,1,3,4,5] else False
+
+def has_sensor():
+	return True if get_logver() in [1,2,6] else False
+
 def main():
-    proc_csq()
+	if has_gsm():
+		proc_csq()
+		proc_sms()
     proc_datetime()
     proc_battvolt()
+	if has_sensor():
+		proc_senstrig()
 
 print('\n',"#"*35,'\n',"#"*8,"V5 TROUBLESHOOTER","#"*8,'\n',"#"*35,'\n')
 try:
