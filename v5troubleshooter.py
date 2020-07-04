@@ -2,7 +2,7 @@ import serial.tools.list_ports as sertool
 import serial
 import time
 from datetime import datetime as dt
-import csv
+import json
 
 def list_comports():
     comports = set()
@@ -44,7 +44,7 @@ def serial_clear(input = True, output = True):
 def sread(printer = False):
     readout = ""
     while ser.in_waiting:
-        readout += ser.read(ser.in_waiting).decode('ascii')
+        readout += ser.read(ser.in_waiting).decode('ascii', 'replace')
     if printer:
         print(readout, end = '')
     return readout
@@ -79,14 +79,97 @@ def waitread(command, rptcmd, expectedout, timeout, increment, printer = False):
     print("Error: Device is not responding.")
     return False
 
-def get_logver():
-	return 0
+def get_servernum(printer=True):
+    startword = "Server Number:"
+    endword = "Enter C to change:"
+    swrite("F", 3)
+    readout = sread()
+    chunk = readout[readout.index(startword):readout.index(endword)].strip()
+    if printer:
+        print(chunk)
+    file_content['config']['servernumber'] = chunk
+    swrite("F", 1)
+    waitread("C", True, "----------", 5, 1)
+    return 0
+    
+def get_logver(printer=True):
+    startword = "Logger version:"
+    endword = "Enter C to change:"
+    swrite("J", 3)
+    readout = sread()
+    chunk = readout[readout.index(startword):readout.index(endword)].strip()
+    if printer:
+        print(chunk)
+    file_content['config']['loggerversion'] = chunk
+    swrite("J", 1)
+    waitread("C", True, "----------", 5, 1)
+    return 0
+
+def get_sendingtime(printer=True):
+    startword = "Alarm every"
+    endword = "Enter C to change:"
+    swrite("D", 3)
+    readout = sread()
+    chunk = readout[readout.index(startword):readout.index(endword)].strip()
+    if printer:
+        print(chunk)
+    file_content['config']['sendingtime'] = chunk
+    swrite("D", 1)
+    waitread("C", True, "----------", 5, 1)
+    return 0
+
+def get_mcupassword(printer=True):
+    startword = "Password:"
+    endword = "Enter C to change:"
+    swrite("K", 3)
+    readout = sread()
+    chunk = readout[readout.index(startword):readout.index(endword)].strip()
+    if printer:
+        print(chunk)
+    file_content['config']['mcupassword'] = chunk
+    swrite("K", 1)
+    waitread("C", True, "----------", 5, 1)
+    return 0
+
+def get_loggernames(printer=True):
+    startword = "Gateway"
+    endword = "Enter C to change:"
+    swrite("N", 3)
+    readout = sread()
+    chunk = readout[readout.index(startword):readout.index(endword)].strip()
+    if printer:
+        print(chunk)
+    file_content['config']['loggernames'] = chunk
+    swrite("N", 1)
+    waitread("C", True, "----------", 5, 1)
+    return 0
+
+def get_sensorcommand(printer=True):
+    startword = "Current command:"
+    endword = "Enter C to change:"
+    swrite("Z", 3)
+    readout = sread()
+    chunk = readout[readout.index(startword):readout.index(endword)].strip()
+    if printer:
+        print(chunk)
+    file_content['config']['sensorcommand'] = chunk
+    swrite("Z", 1)
+    waitread("C", True, "----------", 5, 1)
+    return 0
+
+def dump_config():
+    get_logver()
+    get_sendingtime()
+    get_sensorcommand()
+    get_loggernames()
+    get_servernum()
+    get_mcupassword()
 
 def proc_csq():
     print("\nStart process: Getting CSQ data")
     keyword = 'CSQ: '
     csqs = []
-    for i in range(10):
+    for i in range(11):
         #waitread("O", False, "CSQ: ", 5, 0.5, True)
         #sread(True)
         swrite("O", 2)
@@ -103,7 +186,8 @@ def proc_csq():
         except Exception as e:
             print(e)
             print(f"Invalid CSQ: {m0Csq}")
-    print(csqs)
+    csqs.sort()
+    print(csqs[len(csqs)//2])
     print ("End process: Done!")
     waitread("C", True, "----------", 5, 1)
 
@@ -114,10 +198,10 @@ def proc_sms():
     data = sread()
     if keyword in data:
         swrite("V5 Test SMS", 5)
-		if isfound("Message sent!"):
-			print("Sent test SMS successfully.")
-		else:
-			print("Sending test SMS failed.")
+        if isfound("Message sent!"):
+            print("Sent test SMS successfully.")
+        else:
+            print("Sending test SMS failed.")
     print ("End process: Done!")
     waitread("C", True, "----------", 5, 1)
 
@@ -156,7 +240,7 @@ def proc_battvolt():
         print(f"{keyword}{volt}")
     except Exception as e:
         print(e)
-        print(f"Invalid voltage: {m0Ts}")
+        print(f"Invalid voltage: {m0Volt}")
     print ("End process: Done!")
     waitread("C", True, "----------", 5, 1)
 
@@ -167,27 +251,37 @@ def proc_senstrig():
     print ("End process: Done!")
     waitread("C", True, "----------", 5, 1)
 
-def has_gsm():
-	return True if get_logver() in [0,1,3,4,5] else False
+def has_gsm(logver):
+    return True if logver in [0,1,3,4,5] else False
 
-def has_sensor():
-	return True if get_logver() in [1,2,6] else False
+def has_sensor(logver):
+    return True if logver in [1,2,6] else False
 
 def main():
-	if has_gsm():
-		proc_csq()
-		proc_sms()
+    dump_config()
+    with open(file_name, 'w') as f:
+        json.dump(file_content, f, sort_keys=True, indent=4)
+    logver = get_logver(printer=False)
+    if has_gsm(logver):
+        proc_csq()
+        proc_sms()
     proc_datetime()
     proc_battvolt()
-	if has_sensor():
-		proc_senstrig()
+    if has_sensor(logver):
+        proc_senstrig()
 
 print('\n',"#"*35,'\n',"#"*8,"V5 TROUBLESHOOTER","#"*8,'\n',"#"*35,'\n')
 try:
+    file_content = {'config':{}, 'logs':''}
+    site = 'PEP'
+    person = 'TP'
+    ts = dt.now().strftime('%y%m%d%H%M%S')
+    file_name = f"{site.lower()}_{person.lower()}_{ts}.json"
+    print(file_name)
     serport = comport_setup()
     serbaud = 115200
     ser = serial.Serial(serport, serbaud)
-    print("Started")
+    print("Started\n")
     time.sleep(3)
     swrite("C",1)
     serial_clear()
