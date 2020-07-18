@@ -201,20 +201,27 @@ def proc_datetime():
 def proc_battvolt():
     print("\nStart process: Getting battery voltage")
     keyword = "Voltage: "
-    swrite("G", 3)
-    data = sread()
-    if len(data) > len(keyword) and keyword in data:
-        i = data.index(keyword) + len(keyword)
-        m0Volt = data[i:-1]
-    else:
-        m0Volt = data
-    try:
-        volt = float(m0Volt)
-        print(f"{keyword}{volt}")
-    except Exception as e:
-        print(e)
-        print(f"Invalid voltage: {m0Volt}")
-    if 10.5 < volt < 14:
+    volts = []
+    voltsum = 0
+    for i in range(5):
+        swrite("G", 3)
+        data = sread()
+        if len(data) > len(keyword) and keyword in data:
+            i = data.index(keyword) + len(keyword)
+            m0Volt = data[i:-1]
+        else:
+            m0Volt = data
+        try:
+            volt = float(m0Volt)
+            print(f"{volt}V", end = ", ", flush = True)
+            volts.append(volt)
+            voltsum += volt
+        except Exception as e:
+            print(e)
+            print(f"Invalid voltage: {m0Volt}")
+    voltave = voltsum / len(volts)
+    print(f"\nAverage voltage: {round(voltave, 2)}")
+    if 10.5 < voltave < 14:
         result = "PASS"
     else:
         result = "FAIL"
@@ -286,7 +293,7 @@ solution_csq_low = """Possible solution for poor signal (CSQ = 0-9):
 
 solution_csq_99 = """Possible solution for no communication with GSM (CSQ = 99):
 1. Check GSM connections (wires, connectors, solder). 
-2. Check GSM supply voltage from the dc-dc converter (ideal: 4V,  acceptable range: 3.9V - 4.1V).
+2. Check GSM supply voltage from the dc-dc converter (ideal: 4V,  acceptable range: 3.9V - 4.1V) and adjust the voltage when needed. If the ideal voltage cannot be reached after adjustment, replace the dc-dc converter.
 3. If there is no voltage output, replace the IC2 power switch.
 4. Access the V5 device through ASM and check the CSQ from there.
 """
