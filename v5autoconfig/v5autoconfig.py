@@ -5,29 +5,33 @@ from datetime import datetime as dt
 import csv
 
 def list_comports():
-	comports = set()
-	ports = sertool.comports()
-	for port in ports:
-		#print(port.device)
-		comports.add(port.device)
-	#print(comports)
-	return comports
+    comports = set()
+    ports = sertool.comports()
+    for port in ports:
+        #print(port.device)
+        comports.add(port.device)
+    #print(comports)
+    return comports
 
 def comport_setup():
-	input("Unplug the v5 device. (Press Enter to continue)")
-	get_comport1 = list_comports()
-	print("Plug in the v5 device.")
-	while True:
-		time.sleep(0.5)
-		get_comport2 = list_comports()
-		comdiff = get_comport2 - get_comport1
-		if len(comdiff) == 1:
-			comport = list(comdiff)[0]
-			break
-		elif len(get_comport1 - get_comport2) == 1:
-			get_comport1 = get_comport2			
-	print(comport)
-	return comport
+    get_comport1 = list_comports()
+    print("Plug in or replug the v5 device.")
+    counter = 0
+    while True:
+        time.sleep(0.5)
+        get_comport2 = list_comports()
+        comdiff = get_comport2 - get_comport1
+        if len(comdiff) == 1:
+            comport = list(comdiff)[0]
+            break
+        elif len(get_comport1 - get_comport2) == 1:
+            get_comport1 = get_comport2
+        if counter > 60:
+            print("Error: Timeout reached; no device detected.")
+            raise
+        counter += 1
+    print(comport)
+    return comport
 
 def set_datetime(ts):
 	#S...C...timestamp
@@ -130,7 +134,7 @@ def serial_clear(input = True, output = True):
 def sread(printer=False):
 	readout = ""
 	while ser.in_waiting:
-		readout += ser.read(ser.in_waiting).decode('ascii')
+		readout += ser.read(ser.in_waiting).decode('ascii', 'replace')
 	if printer:
 		print(readout)
 	return readout
@@ -280,7 +284,7 @@ def main():
 		while not isfound("----------"):
 			swrite("C",1)
 		serial_clear()
-		print('-'*10);
+		print('-'*10)
 		if conf['realtimeclock'][0]:
 			set_datetime(conf['realtimeclock'][1].upper())
 		if conf['servernetwork'][0]:
@@ -312,7 +316,7 @@ try:
 	serbaud = 115200
 	ser = serial.Serial(serport, serbaud)
 	print("Started")
-	time.sleep(1)
+	time.sleep(3)
 	main()
 except Exception as e:
 	print(e)
