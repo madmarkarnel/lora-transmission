@@ -181,6 +181,7 @@ void setup()
   Wire.begin();
   rtc.begin();
   init_lora();
+  // init_IMU();
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(DUETRIG, OUTPUT);
@@ -320,6 +321,26 @@ void loop()
       send_rain_data(1);
       // send_thru_lora(dataToSend);
       attachInterrupt(RTCINTPIN, wake, FALLING);
+    }    
+    else if (get_logger_version() == 9)
+    {
+      // Sends IMU sensor data to GSM
+      turn_ON_GSM();
+      send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
+      delay(1000);
+      send_rain_data(0);
+      delay(500);
+      attachInterrupt(RTCINTPIN, wake, FALLING);
+      turn_OFF_GSM();
+    }    
+    else if (get_logger_version() == 10)
+    {
+      // Sends IMU sensor data to LoRa
+      // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
+      send_thru_lora(read_IMU_data());
+      delay(1000);
+      send_rain_data(1);
+      attachInterrupt(RTCINTPIN, wake, FALLING);
     }
     else
     {
@@ -329,7 +350,7 @@ void loop()
       get_Due_Data(1, get_serverNum_from_flashMem());
       attachInterrupt(RTCINTPIN, wake, FALLING);
       turn_OFF_GSM();
-      sleepGSM();
+      // sleepGSM();
     }
 
     rf95.sleep();
@@ -956,24 +977,22 @@ char *read_batt_vol(uint8_t ver)
 float BatteryVoltage(uint8_t ver)
 {
   float measuredvbat;
-  /*
-  int vbatpin;
-  if (ver == 1)
+  if (ver == 3 || ver == 9 || ver == 10)
   {
     measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
     measuredvbat *= 2;                  // we divided by 2, so multiply back
     measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
     measuredvbat /= 1024;               // convert to voltage
+    measuredvbat += 0.22;                // add 0.7V drop in schottky diode
   }
   else
   {
-    */
-  //Voltage Divider 1M ; 100k ;
+  /* Voltage Divider 1M and  100k */
   measuredvbat = analogRead(VBATEXT);
-  measuredvbat *= 3.3;    // reference voltage
-  measuredvbat /= 1024.0; // adc max count
-  measuredvbat *= 11.0;   // (100k+1M)/100k
-  // }
+  measuredvbat *= 3.3;        // reference voltage
+  measuredvbat /= 1024.0;     // adc max count
+  measuredvbat *= 11.0;       // (100k+1M)/100k
+  }
   return measuredvbat;
 }
 

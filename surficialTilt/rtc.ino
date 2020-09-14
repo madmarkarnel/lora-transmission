@@ -114,6 +114,9 @@ void getAtcommand()
   }
   else if (command == "H")
   {
+    send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
+    delay(500);
+    send_rain_data(0);
     /*
     readTimeStamp();
     char testMsg[200] = "SENSLOPE,SENSORPOLL";
@@ -122,11 +125,13 @@ void getAtcommand()
     send_thru_gsm(testMsg, get_serverNum_from_flashMem());
     testMsg[0] = '\0';
     */
+   /*
     Serial.println("A");
     delay(1000);
     Serial.println("Resetting MCU Programatically!");
     resetFunc();
     Serial.println("MCU will never reach here!");
+    */
   }
   else if (command == "I")
   {
@@ -341,7 +346,7 @@ void printMenu()
   Serial.println(F("[E] Exit Debug mode."));
   Serial.println(F("[F] Change 'server number' from flash memory"));
   Serial.println(F("[G] Print input voltage"));
-  Serial.println(F("[H] Reset MCU programmatically"));
+  Serial.println(F("[H] Test send IMU sensor data"));
   Serial.println(F("[I] GSM receive SMS test"));
   Serial.println(F("[J] Change logger version from flash memory"));
   Serial.println(F("[K] Change MCU password"));
@@ -388,8 +393,10 @@ void setLoggerVersion()
   Serial.println("[4] Gateway Mode with TWO LoRa transmitter");
   Serial.println("[5] Gateway Mode with THREE LoRa transmitter");
   Serial.println("[6] LoRa transmitter for Raspberry Pi"); //TX LoRa
-  Serial.println("[7] Sends rain gauge data via LoRa");    //TX LoRa
+  Serial.println("[7] Sends sensor and rain gauge data via LoRa");    //TX LoRa
   Serial.println("[8] LoRa dummy transmitter");    //TX LoRa
+  Serial.println("[9] GSM - Surficial Tilt");
+  Serial.println("[10] LoRa Tx - Surficial Tilt");
   delay(1000);
   while (!Serial.available())
   {
@@ -662,16 +669,66 @@ void readTimeStamp()
 
   ts.remove(0, 2); //remove 1st 2 data in ts
   ts.toCharArray(Ctimestamp, 13);
-  /*
-  if (DEBUG == 1)
+}
+
+char *readDateTime()
+{
+  char storeDt[50];
+  storeDt[0] = '\0';
+
+  DateTime now = rtc.now(); //get the current date-time
+  String ts = String(now.year());
+
+  if (now.month() <= 9)
   {
-    Serial.print("Timestamp: ");
+    ts += "0" + String(now.month());
   }
-  if (DEBUG == 1)
+  else
   {
-    Serial.println(Ctimestamp);
+    ts += String(now.month());
   }
-*/
+
+  if (now.date() <= 9)
+  {
+    ts += "0" + String(now.date());
+  }
+  else
+  {
+    ts += String(now.date());
+  }
+
+  if (now.hour() <= 9)
+  {
+    ts += "0" + String(now.hour());
+  }
+  else
+  {
+    ts += String(now.hour());
+  }
+
+  if (now.minute() <= 9)
+  {
+    ts += "0" + String(now.minute());
+  }
+  else
+  {
+    ts += String(now.minute());
+  }
+
+  if (now.second() <= 9)
+  {
+    ts += "0" + String(now.second());
+  }
+  else
+  {
+    ts += String(now.second());
+  }
+
+  ts.remove(0, 2); //remove 1st 2 data in ts
+  // ts.toCharArray(Ctimestamp, 13);
+  ts.toCharArray(storeDt, 13);
+
+  return storeDt;
 }
 
 //default every 10 minutes interval
