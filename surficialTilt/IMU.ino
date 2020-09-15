@@ -1,153 +1,164 @@
 char IMUdataToSend[200];
+uint8_t calib = 0;
 
-char *read_IMU_data()
-{  
-  for (int i = 0; i < 200; i++) IMUdataToSend[i] = 0x00;
+char *build_IMU_data()
+{
+  char str[20];
+
+  for (int i = 0; i < 200; i++)
+    IMUdataToSend[i] = 0x00;
   /* MADTA*ST*accelerometer(x,y,z),magnetometer(x,y,z), gyro(x,y,z), 200901142120*/
   strncpy((IMUdataToSend), (get_logger_A_from_flashMem()), (20));
   strncat(IMUdataToSend, "*ST*", 4);
-  strncat(IMUdataToSend, read_acc_x(4), sizeof(read_acc_x(4)));
-  strncat(IMUdataToSend, ",", 1);
-  strncat(IMUdataToSend, read_acc_y(4), sizeof(read_acc_y(4)));
-  strncat(IMUdataToSend, ",", 1);
-  strncat(IMUdataToSend, read_acc_z(4), sizeof(read_acc_z(4)));
-  strncat(IMUdataToSend, ",", 1);
-  strncat(IMUdataToSend, read_mag_x(1), sizeof(read_mag_x(1)));
-  strncat(IMUdataToSend, ",", 1);
-  strncat(IMUdataToSend, read_mag_y(1), sizeof(read_mag_y(1)));
-  strncat(IMUdataToSend, ",", 1);
-  strncat(IMUdataToSend, read_mag_z(1), sizeof(read_mag_z(1)));
-  strncat(IMUdataToSend, ",", 1);
-  strncat(IMUdataToSend, read_gyr_x(1), sizeof(read_gyr_x(1)));
-  strncat(IMUdataToSend, ",", 1);
-  strncat(IMUdataToSend, read_gyr_y(1), sizeof(read_gyr_y(1)));
-  strncat(IMUdataToSend, ",", 1);
-  strncat(IMUdataToSend, read_gyr_z(1), sizeof(read_gyr_z(1)));
-  strncat(IMUdataToSend, ",", 1);
+
+  int *data = (int *)malloc(sizeof(int) * 9);
+  if (calib == 1)
+  {
+    data = get_calib_data();
+  }
+  else
+    data = get_raw_data();
+
+  for (int i = 0; i < 9; i++)
+  {
+    sprintf(str, "%f", ((float)data[i]) / 100.0);
+    strncat(IMUdataToSend, str, String(str).length() + 1);
+    strncat(IMUdataToSend, ",", 1);
+  }
+
   strncat(IMUdataToSend, Ctimestamp, sizeof(Ctimestamp));
-  // strncat(IMUdataToSend, readDateTime(), sizeof(readDateTime()));
   delay(100);
   return IMUdataToSend;
+}
+
+int *get_raw_data()
+{
+  int *data = (int *)malloc(sizeof(int) * 9);
+  /* Get a new sensor event */
+  sensors_event_t event, aevent, mevent;
+
+  gyro.getEvent(&event);
+  /* Get a new sensor event */
+  accelmag.getEvent(&aevent, &mevent);
+
+  //accel data
+  data[0] = (int)(aevent.acceleration.x * 100.0);
+  data[1] = (int)(aevent.acceleration.y * 100.0);
+  data[2] = (int)(aevent.acceleration.z * 100.0);
+
+  //magnetometer data
+  data[3] = (int)(mevent.magnetic.x * 100.0);
+  data[4] = (int)(mevent.magnetic.y * 100.0);
+  data[5] = (int)(mevent.magnetic.z * 100.0);
+
+  //gyro data
+  data[6] = (int)(event.gyro.x * 100.0);
+  data[7] = (int)(event.gyro.y * 100.0);
+  data[8] = (int)(event.gyro.z * 100.0);
+
+  return data;
+}
+
+int *get_calib_data()
+{
+  int *calib_data = (int *)malloc(sizeof(int) * 9);
+  int *raw_data = (int *)malloc(sizeof(int) * 9);
+
+  int *a_param = (int *)malloc(sizeof(int) * 12);
+  int *m_param = (int *)malloc(sizeof(int) * 12);
+  int *g_param = (int *)malloc(sizeof(int) * 3);
+  /* Get a new sensor event */
+
+  for (int i = 0; i < 100; i++)
+  {
+    raw_data = get_raw_data();
+
+    delay(1);
+  }
+
+  a_param = get_calib_param_from_flashMem(1);
+  calib_data[0] = a_param[0] * (raw_data[0] - a_param[9]) + a_param[1] * (raw_data[1] - a_param[10]) + a_param[2] * (raw_data[5] - a_param[11]);
+  calib_data[1] = a_param[3] * (raw_data[0] - a_param[9]) + a_param[4] * (raw_data[1] - a_param[10]) + a_param[5] * (raw_data[5] - a_param[11]);
+  calib_data[2] = a_param[6] * (raw_data[0] - a_param[9]) + a_param[7] * (raw_data[1] - a_param[10]) + a_param[8] * (raw_data[5] - a_param[11]);
+
+  m_param = get_calib_param_from_flashMem(2);
+  calib_data[3] = m_param[0] * (raw_data[3] - m_param[9]) + m_param[1] * (raw_data[4] - m_param[10]) + m_param[2] * (raw_data[5] - m_param[11]);
+  calib_data[4] = m_param[3] * (raw_data[3] - m_param[9]) + m_param[4] * (raw_data[4] - m_param[10]) + m_param[5] * (raw_data[5] - m_param[11]);
+  calib_data[5] = m_param[6] * (raw_data[3] - m_param[9]) + m_param[7] * (raw_data[4] - m_param[10]) + m_param[8] * (raw_data[5] - m_param[11]);
+
+  g_param = get_calib_param_from_flashMem(3);
+  calib_data[6] = raw_data[6] - g_param[0];
+  calib_data[7] = raw_data[7] - g_param[1];
+  calib_data[8] = raw_data[8] - g_param[2];
+
+  return calib_data;
+}
+
+//if sensor = 1 = accel, 2= magnetometer, 3= gyroscope
+int *get_calib_param_from_flashMem(int sensor)
+{
+  char *param;
+  int num_of_param, i = 0;
+
+  imu_calib calib_read = flash_imu_calib.read();
+
+  switch (sensor)
+  {
+  case 1: //accel
+    num_of_param = 12;
+    param = calib_read.accel_param;
+    break;
+
+  case 2: //magnetometer
+    num_of_param = 12;
+    param = calib_read.magneto_param;
+    break;
+
+  case 3: //gyroscope
+    num_of_param = 3;
+    param = calib_read.gyro_param;
+    break;
+  }
+
+  int *calib_param = (int *)malloc(sizeof(int) * num_of_param);
+
+  String str;
+  Serial.println(param);
+
+  while ((str = strtok_r(param, ";", &param)) != NULL)
+  { // delimiter is the semicolon
+    Serial.println(str);
+    calib_param[i] = (int)(str.toFloat() * 10000.0);
+    i++;
+  }
+
+  for (int j = 0; j < num_of_param; j++)
+  {
+    Serial.print(j);
+    Serial.print(":\t");
+    Serial.println(calib_param[j]);
+  }
+  return calib_param;
 }
 
 void init_IMU()
 {
   /* Initialise the sensor */
-  if (!gyro.begin()) 
+  // gyro.begin();
+  // accelmag.begin(ACCEL_RANGE_4G);
+
+  if (!gyro.begin())
   {
     /* There was a problem detecting the FXAS21002C ... check your connections*/
     Serial.println("Ooops, no FXAS21002C detected ... Check your wiring!");
     // while (1);
   }
-  if (!accelmag.begin(ACCEL_RANGE_4G)) 
+  if (!accelmag.begin(ACCEL_RANGE_4G))
   {
     /* There was a problem detecting the FXOS8700 ... check your connections */
     Serial.println("Ooops, no FXOS8700 detected ... Check your wiring!");
     // while (1);
   }
-}
-
-/*Read acceleration x, y, z data*/
-char *read_acc_x(uint8_t decimalPlace)
-{
-  char AC_x[7];
-  AC_x[0] = '\0';
-  sensors_event_t aevent;
-  accelmag.getEvent(&aevent);
-  // double acc_x = (aevent.acceleration.x, decimalPlace);  //ganito ba dapat?
-  double acc_x = aevent.acceleration.x;
-  dtostrf(acc_x, 3, decimalPlace, AC_x);
-  return AC_x;
-}
-
-char *read_acc_y(uint8_t decimalPlace)
-{
-  char AC_y[7];
-  AC_y[0] = '\0';
-  sensors_event_t aevent;
-  accelmag.getEvent(&aevent);
-  double acc_y = aevent.acceleration.y;
-  dtostrf(acc_y, 3, decimalPlace, AC_y);
-  return AC_y;
-}
-
-char *read_acc_z(uint8_t decimalPlace)
-{
-  char AC_z[7];
-  AC_z[0] = '\0';
-  sensors_event_t aevent;
-  accelmag.getEvent(&aevent);
-  double acc_z = aevent.acceleration.z;
-  dtostrf(acc_z, 3, decimalPlace, AC_z);
-  return AC_z;
-}
-
-/*Read magnetic x, y, z data*/
-char *read_mag_x(uint8_t decimalPlace)
-{
-  char MG_x[7];
-  MG_x[0] = '\0';
-  sensors_event_t mevent;
-  accelmag.getEvent(&mevent);
-  double mg_x = mevent.magnetic.x;
-  dtostrf(mg_x, 3, decimalPlace, MG_x);
-  return MG_x;
-}
-
-char *read_mag_y(uint8_t decimalPlace)
-{
-  char MG_y[7];
-  MG_y[0] = '\0';
-  sensors_event_t mevent;
-  accelmag.getEvent(&mevent);
-  double mg_y = mevent.magnetic.y;
-  dtostrf(mg_y, 3, decimalPlace, MG_y);
-  return MG_y;
-}
-
-char *read_mag_z(uint8_t decimalPlace)
-{
-  char MG_z[7];
-  MG_z[0] = '\0';
-  sensors_event_t mevent;
-  accelmag.getEvent(&mevent);
-  double mg_z = mevent.magnetic.z;
-  dtostrf(mg_z, 3, decimalPlace, MG_z);
-  return MG_z;
-}
-
-/*Read Speed(Gyro) x, y, z data*/
-char *read_gyr_x(uint8_t decimalPlace)
-{
-  char GR_x[7];
-  GR_x[0] = '\0';
-  sensors_event_t event;
-  gyro.getEvent(&event);
-  double gr_x = event.gyro.x;
-  dtostrf(gr_x, 3, decimalPlace, GR_x);
-  return GR_x;
-}
-
-char *read_gyr_y(uint8_t decimalPlace)
-{
-  char GR_y[7];
-  GR_y[0] = '\0';
-  sensors_event_t event;
-  gyro.getEvent(&event);
-  double gr_y = event.gyro.y;
-  dtostrf(gr_y, 3, decimalPlace, GR_y);
-  return GR_y;
-}
-
-char *read_gyr_z(uint8_t decimalPlace)
-{
-  char GR_z[7];
-  GR_z[0] = '\0';
-  sensors_event_t event;
-  gyro.getEvent(&event);
-  double gr_z = event.gyro.z;
-  dtostrf(gr_z, 3, decimalPlace, GR_z);
-  return GR_z;
 }
 
 void sensor_get_data()

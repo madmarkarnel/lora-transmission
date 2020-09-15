@@ -154,6 +154,13 @@ typedef struct
 } smsPassword;
 smsPassword flashPassword;
 
+typedef struct {
+  boolean valid;
+  char accel_param[100];
+  char magneto_param[100];
+  char gyro_param[15];
+} imu_calib;
+
 /**
  * Reserve a portion of flash memory to store an "int" variable
  * and call it "alarmStorage".
@@ -164,6 +171,7 @@ FlashStorage(passCommand, Senslope);
 FlashStorage(newServerNum, serNumber);
 FlashStorage(flashLoggerName, SensorName);
 FlashStorage(flashPasswordIn, smsPassword);
+FlashStorage(flash_imu_calib, imu_calib);
 
 void (*resetFunc)(void) = 0;
 
@@ -178,10 +186,10 @@ void setup()
   pinPeripheral(10, PIO_SERCOM);
   pinPeripheral(11, PIO_SERCOM);
 
+  init_IMU();
   Wire.begin();
   rtc.begin();
   init_lora();
-  // init_IMU();
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(DUETRIG, OUTPUT);
@@ -224,16 +232,6 @@ void setup()
       serial_flag = 1;
     }
   }
-  /*
-  if (get_logger_version() == 2 || get_logger_version() == 6 || get_logger_version() == 7)
-  {
-    //
-  }
-  else
-  {
-    turn_ON_GSM();
-  }
-  */
   flashLed(LED_BUILTIN, 5, 100);
 }
 
@@ -326,7 +324,7 @@ void loop()
     {
       // Sends IMU sensor data to GSM
       turn_ON_GSM();
-      send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
+      send_thru_gsm(build_IMU_data(),get_serverNum_from_flashMem());
       delay(1000);
       send_rain_data(0);
       delay(500);
@@ -337,7 +335,7 @@ void loop()
     {
       // Sends IMU sensor data to LoRa
       // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
-      send_thru_lora(read_IMU_data());
+      send_thru_lora(build_IMU_data());
       delay(1000);
       send_rain_data(1);
       attachInterrupt(RTCINTPIN, wake, FALLING);

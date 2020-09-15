@@ -114,9 +114,12 @@ void getAtcommand()
   }
   else if (command == "H")
   {
-    send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
-    delay(500);
-    send_rain_data(0);
+    // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
+    // delay(500);
+    // send_rain_data(0);
+    Serial.println(build_IMU_data());
+    sensor_get_data();
+
     /*
     readTimeStamp();
     char testMsg[200] = "SENSLOPE,SENSORPOLL";
