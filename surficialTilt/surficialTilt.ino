@@ -36,7 +36,7 @@ Modified: 29 May 2020
 #define DUESerial Serial1
 #define RTCINTPIN 6
 #define DUETRIG 5
-#define RSTMCU 9
+#define RSTMCU A3
 #define DEBUG 1
 #define VBATPIN A7
 #define VBATEXT A5
@@ -44,6 +44,8 @@ Modified: 29 May 2020
 #define GSMPWR A2
 #define GSMDTR A1
 #define GSMINT A0 //gsm ring interrupt
+
+#define IMU_POWER 9
 
 //gsm related
 #define GSMBAUDRATE 9600
@@ -186,7 +188,7 @@ void setup()
   pinPeripheral(10, PIO_SERCOM);
   pinPeripheral(11, PIO_SERCOM);
 
-  init_IMU();
+  // init_IMU();
   Wire.begin();
   rtc.begin();
   init_lora();
@@ -196,11 +198,13 @@ void setup()
   pinMode(GSMPWR, OUTPUT);
   pinMode(GSMRST, OUTPUT);
   pinMode(RSTMCU, OUTPUT); //MCU hard reset pin
+  pinMode(IMU_POWER, OUTPUT);
 
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(DUETRIG, LOW);
   digitalWrite(GSMPWR, LOW);
   digitalWrite(GSMRST, HIGH);
+  digitalWrite(IMU_POWER, LOW);
 
   /* rain gauge interrupt */
   attachInterrupt(RAININT, rainISR, FALLING);
@@ -323,22 +327,26 @@ void loop()
     else if (get_logger_version() == 9)
     {
       // Sends IMU sensor data to GSM
+      on_IMU();
       turn_ON_GSM();
       send_thru_gsm(build_IMU_data(),get_serverNum_from_flashMem());
       delay(1000);
       send_rain_data(0);
-      delay(500);
+      delay(1000);
       attachInterrupt(RTCINTPIN, wake, FALLING);
       turn_OFF_GSM();
+      off_IMU();
     }    
     else if (get_logger_version() == 10)
     {
       // Sends IMU sensor data to LoRa
       // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
+      on_IMU();
       send_thru_lora(build_IMU_data());
       delay(1000);
       send_rain_data(1);
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      off_IMU();
     }
     else
     {

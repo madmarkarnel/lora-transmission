@@ -117,9 +117,12 @@ void getAtcommand()
     // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
     // delay(500);
     // send_rain_data(0);
+
+    on_IMU();
     Serial.println(build_IMU_data());
     sensor_get_data();
-
+    off_IMU();
+    
     /*
     readTimeStamp();
     char testMsg[200] = "SENSLOPE,SENSORPOLL";

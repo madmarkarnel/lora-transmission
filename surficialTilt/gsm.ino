@@ -387,6 +387,11 @@ void turn_ON_GSM()
   digitalWrite(GSMPWR, HIGH);
   Serial.print("Turning ON GSM ");
   delay(5000);
+  do
+  {
+    gsmManualNetworkConnect();
+  } while (getCSQ() == "99" || getCSQ == 0);
+  
   for (int i = 0; i < 5; i++)
   {
     GSMSerial.write("AT\r"); //gsm initialization
@@ -400,10 +405,6 @@ void turn_ON_GSM()
   }
   GSMSerial.write("ATE0\r"); //turn off echo
   gsmReadOK();
-  do
-  {
-    gsmManualNetworkConnect();
-  } while (getCSQ() == "99" || getCSQ == 0);
 }
 
 void turn_OFF_GSM()

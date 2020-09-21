@@ -4,10 +4,12 @@ uint8_t calib = 0;
 char *build_IMU_data()
 {
   char str[20];
+  char temp[6];
+  dtostrf((readTemp()), 5, 2, temp);
 
   for (int i = 0; i < 200; i++)
     IMUdataToSend[i] = 0x00;
-  /* MADTA*ST*accelerometer(x,y,z),magnetometer(x,y,z), gyro(x,y,z), 200901142120*/
+  /* MADTA*ST*accelerometer(x,y,z),magnetometer(x,y,z), gyro(x,y,z), rtc temperature,200901142120*/
   strncpy((IMUdataToSend), (get_logger_A_from_flashMem()), (20));
   strncat(IMUdataToSend, "*ST*", 4);
 
@@ -26,6 +28,8 @@ char *build_IMU_data()
     strncat(IMUdataToSend, ",", 1);
   }
 
+  strncat(dataToSend, temp, sizeof(temp));
+  strncat(IMUdataToSend, ",", 1);
   strncat(IMUdataToSend, Ctimestamp, sizeof(Ctimestamp));
   delay(100);
   return IMUdataToSend;
@@ -159,6 +163,23 @@ void init_IMU()
     Serial.println("Ooops, no FXOS8700 detected ... Check your wiring!");
     // while (1);
   }
+}
+
+void on_IMU()
+{
+  Serial. println("Turning ON IMU sensor");
+  delay(100);
+  digitalWrite(IMU_POWER, HIGH);
+  delay(100);
+  init_IMU();
+  delay(100);
+}
+
+void off_IMU()
+{
+  Serial. println("Turning OFF IMU sensor");
+  delay(100);
+  digitalWrite(IMU_POWER, LOW);
 }
 
 void sensor_get_data()
