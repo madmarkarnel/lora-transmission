@@ -114,6 +114,8 @@ uint8_t debug_flag = 0;
 uint8_t rcv_LoRa_flag = 0;
 uint16_t store_rtc = 00; //store rtc alarm
 
+uint8_t calib = 0;  //IMU sensor
+
 String serverNumber = ("639175972526");
 bool gsmPwrStat = true;
 
@@ -329,7 +331,7 @@ void loop()
       // Sends IMU sensor data to GSM
       on_IMU();
       turn_ON_GSM();
-      send_thru_gsm(build_IMU_data(),get_serverNum_from_flashMem());
+      send_thru_gsm(read_IMU_data(calib),get_serverNum_from_flashMem());
       delay(1000);
       send_rain_data(0);
       delay(1000);
@@ -342,7 +344,7 @@ void loop()
       // Sends IMU sensor data to LoRa
       // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
       on_IMU();
-      send_thru_lora(build_IMU_data());
+      send_thru_lora(read_IMU_data(calib));
       delay(1000);
       send_rain_data(1);
       attachInterrupt(RTCINTPIN, wake, FALLING);
@@ -551,7 +553,7 @@ void receive_lora_data(uint8_t mode)
         if (strstr(received, ">>"))
         { /*NOT LoRa: 0, 2, 6, 7*/
           flashLed(LED_BUILTIN, 3, 60);
-          if (mode == 1 || mode == 3 || mode == 4 || mode == 5)
+          if (mode == 1 || mode == 3 || mode == 4 || mode == 5 || mode == 10)
           {
             /*remove 1st & 2nd character*/
             for (byte i = 0; i < strlen(received); i++)

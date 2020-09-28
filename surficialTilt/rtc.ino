@@ -119,7 +119,9 @@ void getAtcommand()
     // send_rain_data(0);
 
     on_IMU();
-    Serial.println(build_IMU_data());
+    send_thru_gsm(read_IMU_data(calib),get_serverNum_from_flashMem());
+    // send_thru_lora(read_IMU_data(calib));
+    //Serial.println(build_IMU_data());
     sensor_get_data();
     off_IMU();
     
