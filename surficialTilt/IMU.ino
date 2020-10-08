@@ -23,6 +23,7 @@ void on_IMU()
    * 3.3V - 2.8mA
   */
   Serial.println("Turning ON IMU sensor");
+  pinMode(IMU_POWER, OUTPUT);
   delay(100);
   digitalWrite(IMU_POWER, HIGH);
   delay(100);
@@ -35,26 +36,34 @@ void off_IMU()
   Serial.println("Turning OFF IMU sensor");
   delay(100);
   digitalWrite(IMU_POWER, LOW);
+  pinMode(IMU_POWER, INPUT);
 }
 
 char *read_IMU_data(int calib)
 {
-  for (int i = 0; i < 200; i++)
-    IMUdataToSend[i] = 0x00;
-  /* MADTA*ST*accelerometer(x,y,z),magnetometer(x,y,z), gyro(x,y,z), 200901142120*/
   int *data;
   char str[20];
+  char tmp[10];
 
-  if (calib == 1)
+  for (int i = 0; i < 200; i++)
+    IMUdataToSend[i] = 0x00;
+
+  if (get_calib_param() == 1)
   {
     data = get_calib_data();
   }
   else
     data = get_raw_data();
-
+  /* MADSTA*R*accelerometer(x,y,z),magnetometer(x,y,z), gyro(x,y,z), 200901142120*/
   strncpy((IMUdataToSend), (get_logger_A_from_flashMem()), (20));
-  //  strncpy((IMUdataToSend), "MAD", (20));
-  strncat(IMUdataToSend, "*ST*", 4);
+  if (get_calib_param() == 1)
+  {
+    strncat(IMUdataToSend, "*F*", 3);
+  }
+  else
+  {
+    strncat(IMUdataToSend, "*R*", 3);
+  }
   for (int i = 0; i < 9; i++)
   {
     if (i < 6)
@@ -65,7 +74,10 @@ char *read_IMU_data(int calib)
     strncat(IMUdataToSend, str, String(str).length() + 1);
     strncat(IMUdataToSend, ",", 1);
   }
+  snprintf(tmp, sizeof tmp, "%.2f", readTemp());
+  strncat(IMUdataToSend, tmp, sizeof(tmp));
 
+  strncat(IMUdataToSend, ",", 1);
   strncat(IMUdataToSend, Ctimestamp, sizeof(Ctimestamp));
   delay(100);
   Serial.println(IMUdataToSend);

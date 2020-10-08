@@ -1,5 +1,3 @@
-String tempServer, regServer;
-
 /**
  * @brief Send message to mobile number
  * 
@@ -65,9 +63,9 @@ void manualGSMcmd()
   String cmdAll = quote + manualCMD + quote + CR;
   cmdAll.toCharArray(cmdAllchar, sizeof(cmdAllchar));
 
-  GSMSerial.flush();
   GSMSerial.write(cmdAllchar);
   Serial.println(readGSMResponse());
+  gsmSerialFlush();
 }
 
 /** Over the air commands
@@ -205,7 +203,7 @@ void processIncomingByte(const byte inByte)
 
 char *readGSMResponse()
 {
-  char response[100]; //200
+  // char response[100]; //200
   int length = sizeof(response);
   response[0] = '\0';
 
@@ -246,6 +244,21 @@ int getCsqStrtok(char *buffer)
   tmpBuf = strtok(buffer, ": ");
   tmpBuf = strtok(NULL, ",");
   return (atoi(tmpBuf));
+}
+
+char *readCSQ()
+{
+  char c_csq[5] = "99";
+  gsmSerialFlush();
+  GSMSerial.write("AT+CSQ\r");
+  delay(500);
+  snprintf(_csq, sizeof _csq, "%d", getCsqStrtok(readGSMResponse()));
+  return _csq;
+
+  // else
+  // {
+  //   return c_csq;
+  // }
 }
 
 String getCSQ()
@@ -324,19 +337,20 @@ void gsmManualNetworkConnect()
   simNetCommand.toCharArray(command, 25);
   Serial.println(command);
 
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < 10; i++)
   {
     gsmSerialFlush();
     GSMSerial.write(command);
     delay(1000);
     if (gsmReadOK())
     {
-      Serial.println("Command success!");
+      Serial.print("GSM Connected to: ");
+      Serial.println(simNetwork());
       break;
     }
     else
     {
-      Serial.println("Command failed.");
+      Serial.println("retrying connection");
     }
   }
 }
@@ -385,26 +399,36 @@ void resetGSM()
 void turn_ON_GSM()
 {
   digitalWrite(GSMPWR, HIGH);
-  Serial.print("Turning ON GSM ");
-  delay(5000);
-  do
-  {
-    gsmManualNetworkConnect();
-  } while (getCSQ() == "99" || getCSQ == 0);
-  
-  for (int i = 0; i < 5; i++)
+  Serial.println("Turning ON GSM ");
+  delay(3000);
+
+  for (int i = 0; i < 10; i++)
   {
     GSMSerial.write("AT\r"); //gsm initialization
-    // if (gsmReadOK())
-    // {
-    //   Serial.println("GSM connection success!");
-    //   break;
-    // }
-    Serial.print(". ");
     delay(500);
+    if (gsmReadOK())
+    {
+      // Serial.println("GSM connection success!");
+      break;
+    }
+    Serial.print(". ");
   }
+
+  gsmManualNetworkConnect();
+
   GSMSerial.write("ATE0\r"); //turn off echo
-  gsmReadOK();
+  if (gsmReadOK())
+  {
+    Serial.println("Turning GSM to NO echo mode");
+    Serial.println("GSM is no now ready!");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("Check GSM if connected or powered ON!");
+  }
+  Serial.print("CSQ: ");
+  Serial.println(readCSQ());
 }
 
 void turn_OFF_GSM()

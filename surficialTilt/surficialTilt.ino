@@ -36,7 +36,6 @@ Modified: 29 May 2020
 #define DUESerial Serial1
 #define RTCINTPIN 6
 #define DUETRIG 5
-#define RSTMCU A3
 #define DEBUG 1
 #define VBATPIN A7
 #define VBATEXT A5
@@ -44,8 +43,7 @@ Modified: 29 May 2020
 #define GSMPWR A2
 #define GSMDTR A1
 #define GSMINT A0 //gsm ring interrupt
-
-#define IMU_POWER 9
+#define IMU_POWER A3
 
 //gsm related
 #define GSMBAUDRATE 9600
@@ -114,10 +112,12 @@ uint8_t debug_flag = 0;
 uint8_t rcv_LoRa_flag = 0;
 uint16_t store_rtc = 00; //store rtc alarm
 
-uint8_t calib = 0;  //IMU sensor
-
+//GSM 
 String serverNumber = ("639175972526");
 bool gsmPwrStat = true;
+String tempServer, regServer;
+char _csq[10];
+char response[150];
 
 /* Pin 11-Rx ; 10-Tx (GSM comms) */
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -171,17 +171,16 @@ typedef struct {
 */
 FlashStorage(alarmStorage, int);
 FlashStorage(loggerVersion, int);
+FlashStorage(imuRawCalib, int);
 FlashStorage(passCommand, Senslope);
 FlashStorage(newServerNum, serNumber);
 FlashStorage(flashLoggerName, SensorName);
 FlashStorage(flashPasswordIn, smsPassword);
 FlashStorage(flash_imu_calib, imu_calib);
 
-void (*resetFunc)(void) = 0;
 
 void setup()
 {
-  digitalWrite(RSTMCU, HIGH); //MCU hard reset pin
   Serial.begin(BAUDRATE);
   DUESerial.begin(DUEBAUD);
   GSMSerial.begin(9600);
@@ -199,7 +198,6 @@ void setup()
   pinMode(DUETRIG, OUTPUT);
   pinMode(GSMPWR, OUTPUT);
   pinMode(GSMRST, OUTPUT);
-  pinMode(RSTMCU, OUTPUT); //MCU hard reset pin
   pinMode(IMU_POWER, OUTPUT);
 
   digitalWrite(LED_BUILTIN, LOW);
@@ -331,7 +329,7 @@ void loop()
       // Sends IMU sensor data to GSM
       on_IMU();
       turn_ON_GSM();
-      send_thru_gsm(read_IMU_data(calib),get_serverNum_from_flashMem());
+      send_thru_gsm(read_IMU_data(get_calib_param()),get_serverNum_from_flashMem());
       delay(1000);
       send_rain_data(0);
       delay(1000);
@@ -344,7 +342,7 @@ void loop()
       // Sends IMU sensor data to LoRa
       // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
       on_IMU();
-      send_thru_lora(read_IMU_data(calib));
+      send_thru_lora(read_IMU_data(get_calib_param()));
       delay(1000);
       send_rain_data(1);
       attachInterrupt(RTCINTPIN, wake, FALLING);
@@ -883,14 +881,8 @@ char *get_password_from_flashMem()
 */
 void send_rain_data(uint8_t sendTo)
 {
-  char csq[5];
-  char temp[6];
-  char volt[6];
-  getCSQ().toCharArray(csq, 5);
-  dtostrf((readTemp()), 5, 2, temp);
-  dtostrf(rainTips, 3, 2, sendRainTip); //convert rainTip to char
-  dtostrf((BatteryVoltage(get_logger_version())), 4, 2, volt);
-  getPwrdFromMemory();
+  char temp[10];
+  char volt[10];
   readTimeStamp();
 
   for (int i = 0; i < DATALEN; i++)
@@ -909,19 +901,27 @@ void send_rain_data(uint8_t sendTo)
   // strncpy((dataToSend), (get_logger_A_from_flashMem()), (20));
   strncat(dataToSend, "W", 1);
   strncat(dataToSend, ",", 1);
+
+  snprintf(temp, sizeof temp, "%.2f", readTemp());
   strncat(dataToSend, temp, sizeof(temp));
   strncat(dataToSend, ",", 1);
+
+  snprintf(sendRainTip, sizeof sendRainTip, "%.2f", rainTips);
   strncat(dataToSend, sendRainTip, sizeof(sendRainTip));
   strncat(dataToSend, ",", 1);
+
+  snprintf(volt, sizeof volt, "%.2f", readBatteryVoltage(get_logger_version()));
   strncat(dataToSend, volt, sizeof(volt));
+
   strncat(dataToSend, ",", 1);
-  strncat(dataToSend, csq, sizeof(csq));
+  // strncat(dataToSend, readCSQ(), sizeof(readCSQ()));
+  strncat(dataToSend, _csq, sizeof(_csq));
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
-  if (sendTo == 1)
-  {
-    strncat(dataToSend, "<<", 2);
-  }
+  // if (sendTo == 1)
+  // {
+  //   strncat(dataToSend, "<<", 2);
+  // }
   delay(500);
   if (sendTo == 1)
   {
@@ -953,7 +953,7 @@ char *read_batt_vol(uint8_t ver)
 {
   char volt[6];
   char voltMessage[200];
-  dtostrf((BatteryVoltage(ver)), 4, 2, volt);
+  dtostrf((readBatteryVoltage(get_logger_version())), 4, 2, volt);
   readTimeStamp();
 
   if (ver == 6)
@@ -982,16 +982,16 @@ char *read_batt_vol(uint8_t ver)
 }
 
 // Measure battery voltage using divider on Feather M0
-float BatteryVoltage(uint8_t ver)
+float readBatteryVoltage(uint8_t ver)
 {
   float measuredvbat;
-  if (ver == 3 || ver == 9 || ver == 10)
+  if ((ver == 3) || (ver == 9) || (ver == 10))
   {
     measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
     measuredvbat *= 2;                  // we divided by 2, so multiply back
     measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
     measuredvbat /= 1024;               // convert to voltage
-    measuredvbat += 0.22;                // add 0.7V drop in schottky diode
+    measuredvbat += 0.28;                // add 0.7V drop in schottky diode
   }
   else
   {
@@ -1205,6 +1205,8 @@ void no_data_from_senslope(uint8_t mode)
 void turn_ON_due(uint8_t mode)
 {
   Serial.println("Turning ON Custom Due. . .");
+  pinMode(DUETRIG, OUTPUT);
+  delay(100);
   digitalWrite(DUETRIG, HIGH);
   delay(100);
 }
@@ -1214,6 +1216,7 @@ void turn_OFF_due(uint8_t mode)
   Serial.println("Turning OFF Custom Due. . .");
   digitalWrite(DUETRIG, LOW);
   delay(100);
+  pinMode(DUETRIG, INPUT);
 }
 
 void rainISR()
@@ -1278,89 +1281,3 @@ String parse_voltage(char *toParse)
   }
   return parse_volt;
 }
-
-/*
-char *parse_voltage(char *toParse)
-{
-  int i = 0;
-  char final_volt[200];
-  String parse_volt;
-
-  //MADTB*VOLT:12.33*200214111000
-  char *buff = strtok(toParse, ":");
-  while (buff != 0)
-  {
-    char *separator = strchr(buff, '*');
-    if (separator != 0)
-    {
-      *separator = 0;
-      if (i == 1)
-      {
-        parse_volt = buff;
-        // Serial.println(parse_volt);
-      }
-      i++;
-    }
-    buff = strtok(0, ":");
-  }
-  parse_volt.toCharArray(final_volt, 200);
-  parse_volt.toCharArray(txVoltage, sizeof(txVoltage));
-  Serial.println(final_volt);
-  return buff;
-}
-
-char *parse_voltage_B(char *toParse)
-{
-  int i = 0;
-  char final_volt[200];
-  String parse_volt;
-
-  //MADTB*VOLT:12.33*200214111000
-  char *buff = strtok(toParse, ":");
-  while (buff != 0)
-  {
-    char *separator = strchr(buff, '*');
-    if (separator != 0)
-    {
-      *separator = 0;
-      if (i == 1)
-      {
-        parse_volt = buff;
-        // Serial.println(parse_volt);
-      }
-      i++;
-    }
-    buff = strtok(0, ":");
-  }
-  parse_volt.toCharArray(final_volt, 200);
-  parse_volt.toCharArray(txVoltageB, sizeof(txVoltageB));
-  Serial.println(final_volt);
-  return buff;
-}
-
-char *parse_voltage(char *toParse)
-{
-  int i = 0;
-  char final_volt[200];
-  String parse_volt;
-
-  //MADTB*VOLT:12.33*200214111000
-  char *buff = strtok(toParse, ":");
-  while (buff != 0)
-  {
-    char *separator = strchr(buff, '*');
-    if (separator != 0)
-    {
-      *separator = 0;
-      if (i == 1)
-      {
-        parse_volt = buff;
-      }
-      i++;
-    }
-    buff = strtok(0, ":");
-  }
-  parse_volt.toCharArray(final_volt, 200);
-  return final_volt;
-}
-*/

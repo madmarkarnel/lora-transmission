@@ -52,6 +52,8 @@ void getAtcommand()
   {
     Serial.print("RTC temperature: ");
     Serial.println(readTemp());
+    // Serial.println(readTempRTC());
+    // Serial.println(BatteryVoltage(get_logger_version()));
   }
   else if (command == "C")
   {
@@ -109,22 +111,19 @@ void getAtcommand()
   {
     //print voltage
     Serial.print("Voltage: ");
-    Serial.println(BatteryVoltage(get_logger_version()));
+    Serial.println(readBatteryVoltage(get_logger_version()));
     Serial.println(read_batt_vol(get_logger_version()));
   }
   else if (command == "H")
   {
-    // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
-    // delay(500);
-    // send_rain_data(0);
-
     on_IMU();
-    send_thru_gsm(read_IMU_data(calib),get_serverNum_from_flashMem());
+    send_rain_data(0);
+    send_thru_gsm(read_IMU_data(get_calib_param()), get_serverNum_from_flashMem());
     // send_thru_lora(read_IMU_data(calib));
     //Serial.println(build_IMU_data());
     sensor_get_data();
     off_IMU();
-    
+
     /*
     readTimeStamp();
     char testMsg[200] = "SENSLOPE,SENSORPOLL";
@@ -133,7 +132,7 @@ void getAtcommand()
     send_thru_gsm(testMsg, get_serverNum_from_flashMem());
     testMsg[0] = '\0';
     */
-   /*
+    /*
     Serial.println("A");
     delay(1000);
     Serial.println("Resetting MCU Programatically!");
@@ -173,9 +172,6 @@ void getAtcommand()
   }
   else if (command == "L")
   {
-    // build_message(0);
-    // send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
-
     manualGSMcmd();
   }
   else if (command == "M")
@@ -241,7 +237,7 @@ void getAtcommand()
   else if (command == "O")
   {
     Serial.print("CSQ: ");
-    Serial.println(getCSQ());
+    Serial.println(readCSQ());
   }
   else if (command == "P")
   {
@@ -253,14 +249,15 @@ void getAtcommand()
   }
   else if (command == "Q")
   {
-    resetRainTips();
+    Serial.print("IMU Parameter: ");
+    Serial.println(get_calib_param());
+    if (isChangeParam())
+      setIMUdataRawCalib();
+    Serial.readStringUntil('\r\n');
   }
   else if (command == "R")
   {
     resetGSM();
-    // readTimeStamp();
-    // Serial.print("Timestamp: ");
-    // Serial.println(Ctimestamp);
   }
   else if (command == "S")
   {
@@ -363,7 +360,7 @@ void printMenu()
   Serial.println(F("[N] Change datalogger names from memory."));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
-  Serial.println(F("[Q] Reset rain tips."));
+  Serial.println(F("[Q] IMU data parameters"));
   Serial.println(F("[R] Reset GSM"));
   Serial.println(F("[S] Set date and time."));
   Serial.println(F("[T] Parse voltage from remote logger."));
@@ -391,6 +388,31 @@ void print_rtcInterval()
   Serial.println("------------------------------------------------");
 }
 
+void setIMUdataRawCalib()
+{
+  int raw_calib;
+  Serial.println("[0] Raw IMU data");
+  Serial.println("[1] Calibrated IMU data");
+  while (!Serial.available())
+  {
+  }
+  if (Serial.available())
+  {
+    Serial.setTimeout(8000);
+    raw_calib = Serial.parseInt();
+    Serial.print("INPUT = ");
+    Serial.println(raw_calib);
+  }
+  delay(50);
+  imuRawCalib.write(raw_calib);
+}
+
+uint8_t get_calib_param()
+{
+  int param = imuRawCalib.read();
+  return param;
+}
+
 void setLoggerVersion()
 {
   int version;
@@ -400,9 +422,9 @@ void setLoggerVersion()
   Serial.println("[3] Gateway Mode with only ONE LoRa transmitter");
   Serial.println("[4] Gateway Mode with TWO LoRa transmitter");
   Serial.println("[5] Gateway Mode with THREE LoRa transmitter");
-  Serial.println("[6] LoRa transmitter for Raspberry Pi"); //TX LoRa
-  Serial.println("[7] Sends sensor and rain gauge data via LoRa");    //TX LoRa
-  Serial.println("[8] LoRa dummy transmitter");    //TX LoRa
+  Serial.println("[6] LoRa transmitter for Raspberry Pi");         //TX LoRa
+  Serial.println("[7] Sends sensor and rain gauge data via LoRa"); //TX LoRa
+  Serial.println("[8] LoRa dummy transmitter");                    //TX LoRa
   Serial.println("[9] GSM - Surficial Tilt");
   Serial.println("[10] LoRa Tx - Surficial Tilt");
   delay(1000);
@@ -441,8 +463,6 @@ void setAlarmInterval()
     Serial.print("From user = ");
     Serial.println(alarmSelect);
   }
-  // alarm_setting = alarmSelect;
-  // setAlarmEvery30(alarm_setting);
   delay(50);
   alarmStorage.write(alarmSelect);
   delay(50);
@@ -461,11 +481,7 @@ void changeSensCommand()
   Serial.print("Insert DUE command: ");
   String dynaCommand = Serial.readStringUntil('\n');
   Serial.println(dynaCommand);
-  // Serial.print("Insert sensor name: ");
-  // String sensorName = Serial.readStringUntil('\n');
-  // Serial.println(sensorName);
   dynaCommand.toCharArray(sensCommand.senslopeCommand, 50);
-  // sensorName.toCharArray(sensCommand.stationName, 10);
   passCommand.write(sensCommand); //save to flash memory
 }
 
@@ -623,6 +639,17 @@ float readTemp()
   // Serial.print(rtc.getTemperature());
   // dtostrf(temp, 5, 2, temperature);
   return temp;
+}
+
+char new_temp[15];
+char *readTempRTC()
+{
+  char tmp[10];
+  rtc.convertTemperature();
+  float temp = rtc.getTemperature();
+  snprintf(tmp, sizeof tmp, "%.2f", temp);
+  strncpy(new_temp, tmp, sizeof(tmp));
+  return new_temp;
 }
 
 void readTimeStamp()
