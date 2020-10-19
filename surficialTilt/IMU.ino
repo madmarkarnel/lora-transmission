@@ -20,11 +20,11 @@ imu_calib nxp;
 void on_IMU()
 {
   /**Current consumption of bare IMU when sampling
-   * 3.3V - 2.8mA
+   * 3.3V ~ 2.8mA
   */
   Serial.println("Turning ON IMU sensor");
-  pinMode(IMU_POWER, OUTPUT);
-  delay(100);
+  // pinMode(IMU_POWER, OUTPUT);
+  // delay(100);
   digitalWrite(IMU_POWER, HIGH);
   delay(100);
   init_IMU();
@@ -36,7 +36,7 @@ void off_IMU()
   Serial.println("Turning OFF IMU sensor");
   delay(100);
   digitalWrite(IMU_POWER, LOW);
-  pinMode(IMU_POWER, INPUT);
+  // pinMode(IMU_POWER, INPUT);
 }
 
 char *read_IMU_data(int calib)

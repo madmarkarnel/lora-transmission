@@ -329,13 +329,13 @@ void loop()
       // Sends IMU sensor data to GSM
       on_IMU();
       turn_ON_GSM();
-      send_thru_gsm(read_IMU_data(get_calib_param()),get_serverNum_from_flashMem());
-      delay(1000);
       send_rain_data(0);
       delay(1000);
-      attachInterrupt(RTCINTPIN, wake, FALLING);
+      send_thru_gsm(read_IMU_data(get_calib_param()),get_serverNum_from_flashMem());
+      delay(1000);
       turn_OFF_GSM();
       off_IMU();
+      attachInterrupt(RTCINTPIN, wake, FALLING);
     }    
     else if (get_logger_version() == 10)
     {
@@ -345,8 +345,8 @@ void loop()
       send_thru_lora(read_IMU_data(get_calib_param()));
       delay(1000);
       send_rain_data(1);
-      attachInterrupt(RTCINTPIN, wake, FALLING);
       off_IMU();
+      attachInterrupt(RTCINTPIN, wake, FALLING);
     }
     else
     {
@@ -914,8 +914,8 @@ void send_rain_data(uint8_t sendTo)
   strncat(dataToSend, volt, sizeof(volt));
 
   strncat(dataToSend, ",", 1);
-  // strncat(dataToSend, readCSQ(), sizeof(readCSQ()));
-  strncat(dataToSend, _csq, sizeof(_csq));
+  strncat(dataToSend, readCSQ(), sizeof(readCSQ()));
+  // strncat(dataToSend, _csq, sizeof(_csq));
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
   // if (sendTo == 1)

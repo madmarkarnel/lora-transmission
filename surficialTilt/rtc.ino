@@ -116,6 +116,7 @@ void getAtcommand()
   }
   else if (command == "H")
   {
+    /*
     on_IMU();
     send_rain_data(0);
     send_thru_gsm(read_IMU_data(get_calib_param()), get_serverNum_from_flashMem());
@@ -123,6 +124,17 @@ void getAtcommand()
     //Serial.println(build_IMU_data());
     sensor_get_data();
     off_IMU();
+    */
+
+    on_IMU();
+    turn_ON_GSM();
+    send_rain_data(0);
+    delay(1000);
+    send_thru_gsm(read_IMU_data(get_calib_param()), get_serverNum_from_flashMem());
+    delay(1000);
+    off_IMU();
+    turn_OFF_GSM();
+    // attachInterrupt(RTCINTPIN, wake, FALLING);
 
     /*
     readTimeStamp();
@@ -292,8 +304,8 @@ void getAtcommand()
     // turn_ON_GSM();
     Serial.println("sending rain gauge data . . .");
     send_rain_data(0);
-    delay(1000);
-    get_rssi(get_logger_version());
+    // delay(1000);
+    // get_rssi(get_logger_version());
     // turn_OFF_GSM();
   }
   else if (command == "V")

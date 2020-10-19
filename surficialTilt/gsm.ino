@@ -45,6 +45,8 @@ void send_thru_gsm(char *inputMessage, String serverNumber)
       Serial.println("Sending message failed!");
       GSMSerial.write(26); //need to clear pending gsm cmd
       delay(500);
+      Serial.print("CSQ: ");
+      Serial.println(readCSQ());
     }
   }
 }
@@ -254,11 +256,6 @@ char *readCSQ()
   delay(500);
   snprintf(_csq, sizeof _csq, "%d", getCsqStrtok(readGSMResponse()));
   return _csq;
-
-  // else
-  // {
-  //   return c_csq;
-  // }
 }
 
 String getCSQ()
@@ -400,21 +397,14 @@ void turn_ON_GSM()
 {
   digitalWrite(GSMPWR, HIGH);
   Serial.println("Turning ON GSM ");
-  delay(3000);
+  delay(5000);
+  int overflow_counter = 0;
 
-  for (int i = 0; i < 10; i++)
+  do
   {
-    GSMSerial.write("AT\r"); //gsm initialization
-    delay(500);
-    if (gsmReadOK())
-    {
-      // Serial.println("GSM connection success!");
-      break;
-    }
-    Serial.print(". ");
-  }
-
-  gsmManualNetworkConnect();
+    gsmManualNetworkConnect();
+    overflow_counter++;
+  } while (readCSQ() == 0 || overflow_counter < 2);
 
   GSMSerial.write("ATE0\r"); //turn off echo
   if (gsmReadOK())
@@ -438,94 +428,3 @@ void turn_OFF_GSM()
   digitalWrite(GSMPWR, LOW);
   Serial.println("Turning OFF GSM . . .");
 }
-
-/*
-String readGSMSerial(int maxResponseTime = 100)
-{
-  String response;
-  int timeout = 0;
-  while (!GSMSerial.available() && timeout < maxResponseTime)
-  {
-    delay(10);
-    timeout++;
-  }
-  if (GSMSerial.available())
-  {
-    response = GSMSerial.readString();
-  }
-  return response;
-}
-
-int checkOkError(String response)
-{
-  if (isResponse(response, "OK"))
-  {
-    //Serial.println("OK received!");
-    return 0;
-  }
-  else if (isResponse(response, "ERROR"))
-  {
-    Serial.println("ERROR received!");
-    return -1;
-  }
-  else
-  {
-    return -2;
-  }
-}
-
-bool isResponse(String response, String keyword)
-{
-  if (response.indexOf(keyword) != -1)
-  {
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
-String gsmCommand(char *command)
-{
-  String response;
-
-  gsmSerialFlush();
-  GSMSerial.write(command);
-  response = readGSMSerial();
-  return response;
-}
-
-void updateSerial()
-{
-  delay(500);
-  while (Serial.available())
-  {
-    GSMSerial.write(Serial.read()); //Forward what Serial received to Software Serial Port
-  }
-  while (GSMSerial.available())
-  {
-    Serial.write(GSMSerial.read()); //Forward what Software Serial received to Serial Port
-  }
-}
-
-String getCSQ()
-{
-  String csqResponse, csqval, atReply;
-  int counter = 0;
-
-  GSMSerial.write("AT\r");
-  gsmReadOK();
-  csqResponse = gsmCommand("AT+CSQ\r");
-  if (checkOkError(csqResponse) == 0)
-  {
-    //Serial.println(csqResponse);
-    csqval = csqResponse.substring(csqResponse.indexOf("+CSQ: ") + 6, csqResponse.indexOf(","));
-  }
-  else
-  {
-    csqval = ("99");
-  }
-  return csqval;
-}
-*/
