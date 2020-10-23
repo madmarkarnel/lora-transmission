@@ -44,7 +44,8 @@ char *read_IMU_data(int calib)
   int *data;
   char str[20];
   char tmp[10];
-
+  readTimeStamp();
+  
   for (int i = 0; i < 200; i++)
     IMUdataToSend[i] = 0x00;
 

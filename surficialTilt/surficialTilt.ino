@@ -1,18 +1,22 @@
 /**
- * Arabica datalogger
+ * Champagne Datalogger
+ * Surficial Tilt IMU sensor added
 
 Features:
-* Sends sensor data via LoRa for version 4 datalogger.
-* Built-in rtc with configurable wake interrupt.
-* Low power mode ~1mA
+* Sends sensor data via LoRa and GSM
+* Built-in rtc with configurable wake interrupt
+* Low power mode ~10uA
 
 The circuit:
-* Adafruit Feather M0 with RFM95 433MHz
-* Arabica Board with rtc
+* Champagne Board
+* Adafruit Feather M0
+* RFM95 433MHz
+* RTC
+* GSM
 
-Created: 12 October 2019
-By : MAD, TEP
-Modified: 29 May 2020
+Created: January 2020
+By : MAD, TEP, BC
+Modified: October 23 2020
 */
 
 #include <Wire.h>
@@ -25,7 +29,6 @@ Modified: 29 May 2020
 #include <FlashStorage.h>
 #include <Arduino.h>        // required before wiring_private.h
 #include "wiring_private.h" // pinPeripheral() function
-#include <Regexp.h>
 #include <string.h>
 #include <Adafruit_FXAS21002C.h>
 #include <Adafruit_FXOS8700.h>
@@ -43,7 +46,7 @@ Modified: 29 May 2020
 #define GSMPWR A2
 #define GSMDTR A1
 #define GSMINT A0 //gsm ring interrupt
-#define IMU_POWER A3
+#define IMU_POWER 17  //A3
 
 //gsm related
 #define GSMBAUDRATE 9600
@@ -311,7 +314,7 @@ void loop()
     {
       // Sends rain gauge data via LoRa
       get_Due_Data(0, get_serverNum_from_flashMem());
-      delay(1000);
+      delay_millis(1000);
       send_rain_data(1);
       attachInterrupt(RTCINTPIN, wake, FALLING);
     }
@@ -319,7 +322,7 @@ void loop()
     {
       // Sends rain gauge data via LoRa
       // get_Due_Data(0, get_serverNum_from_flashMem());
-      delay(1000);
+      delay_millis(1000);
       send_rain_data(1);
       // send_thru_lora(dataToSend);
       attachInterrupt(RTCINTPIN, wake, FALLING);
@@ -330,9 +333,9 @@ void loop()
       on_IMU();
       turn_ON_GSM();
       send_rain_data(0);
-      delay(1000);
+      delay_millis(1000);
       send_thru_gsm(read_IMU_data(get_calib_param()),get_serverNum_from_flashMem());
-      delay(1000);
+      delay_millis(1000);
       turn_OFF_GSM();
       off_IMU();
       attachInterrupt(RTCINTPIN, wake, FALLING);
@@ -343,7 +346,7 @@ void loop()
       // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
       on_IMU();
       send_thru_lora(read_IMU_data(get_calib_param()));
-      delay(1000);
+      delay_millis(1000);
       send_rain_data(1);
       off_IMU();
       attachInterrupt(RTCINTPIN, wake, FALLING);
@@ -940,11 +943,11 @@ void flashLed(int pin, int times, int wait)
   for (int i = 0; i < times; i++)
   {
     digitalWrite(pin, HIGH);
-    delay(wait);
+    delay_millis(wait);
     digitalWrite(pin, LOW);
     if (i + 1 < times)
     {
-      delay(wait);
+      delay_millis(wait);
     }
   }
 }

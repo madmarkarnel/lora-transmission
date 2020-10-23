@@ -28,11 +28,11 @@ void send_thru_gsm(char *inputMessage, String serverNumber)
   {
     gsmSerialFlush();
     GSMSerial.write(atCmgsNo); //AT+CMGS="639XXXXXXXXX"\r
-    delay(500);
+    delay_millis(500);
     if (strstr(readGSMResponse(), ">"))
     {
       GSMSerial.write(msgToSend);
-      delay(500);
+      delay_millis(500);
       GSMSerial.write(26);
       if (readGSMResponse(), "OK")
       {
@@ -44,7 +44,7 @@ void send_thru_gsm(char *inputMessage, String serverNumber)
     {
       Serial.println("Sending message failed!");
       GSMSerial.write(26); //need to clear pending gsm cmd
-      delay(500);
+      delay_millis(500);
       Serial.print("CSQ: ");
       Serial.println(readCSQ());
     }
@@ -227,7 +227,7 @@ bool gsmReadOK()
       break;
     }
     // Serial.print(" .");
-    delay(10);
+    delay_millis(10);
   }
   return false;
 }
@@ -253,7 +253,7 @@ char *readCSQ()
   char c_csq[5] = "99";
   gsmSerialFlush();
   GSMSerial.write("AT+CSQ\r");
-  delay(500);
+  delay_millis(500);
   snprintf(_csq, sizeof _csq, "%d", getCsqStrtok(readGSMResponse()));
   return _csq;
 }
@@ -286,7 +286,7 @@ String getCSQ()
 void gsmHangup()
 {
   //when ring pin triggers, call this function
-  delay(2000);
+  delay_millis(2000);
   GSMSerial.write("ATH\r");
 }
 
@@ -294,7 +294,7 @@ void gsmDeleteReadSmsInbox()
 {
   GSMSerial.write("AT+CMGD=1,2\r");
   // Serial.println(readGSMResponse());
-  delay(1000);
+  delay_millis(1000);
   if (gsmReadOK())
   {
     Serial.println("Command success!");
@@ -338,7 +338,7 @@ void gsmManualNetworkConnect()
   {
     gsmSerialFlush();
     GSMSerial.write(command);
-    delay(1000);
+    delay_millis(1000);
     if (gsmReadOK())
     {
       Serial.print("GSM Connected to: ");
@@ -397,7 +397,7 @@ void turn_ON_GSM()
 {
   digitalWrite(GSMPWR, HIGH);
   Serial.println("Turning ON GSM ");
-  delay(5000);
+  delay_millis(20000);
   int overflow_counter = 0;
 
   do
@@ -421,10 +421,26 @@ void turn_ON_GSM()
   Serial.println(readCSQ());
 }
 
+void delay_millis(int _delay)
+{
+  uint8_t delay_turn_on_flag = 0;
+  unsigned long _delayStart = millis();
+  // Serial.println("starting delay . . .");
+  do
+  {
+    if((millis() - _delayStart) > _delay)
+    {
+      _delayStart = millis();
+      delay_turn_on_flag = 1;
+      // Serial.println("delay timeout!");
+    }
+  } while (delay_turn_on_flag == 0);
+}
+
 void turn_OFF_GSM()
 {
   gsmDeleteReadSmsInbox();
-  delay(5000);
+  delay_millis(5000);
   digitalWrite(GSMPWR, LOW);
   Serial.println("Turning OFF GSM . . .");
 }
