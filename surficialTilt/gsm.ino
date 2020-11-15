@@ -382,9 +382,9 @@ void resetGSM()
   int counter = 0;
   Serial.println("GSM resetting . . .");
   digitalWrite(GSMRST, LOW);
-  delay(500);
+  delay_millis(500);
   digitalWrite(GSMRST, HIGH);
-  delay(500);
+  delay_millis(500);
   do
   {
     GSMSerial.write("AT\r"); //gsm initialization

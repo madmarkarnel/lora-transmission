@@ -6,6 +6,7 @@ Features:
 * Sends sensor data via LoRa and GSM
 * Built-in rtc with configurable wake interrupt
 * Low power mode ~10uA
+* ~0.5mA with IMU sensor
 
 The circuit:
 * Champagne Board
@@ -46,7 +47,7 @@ Modified: October 23 2020
 #define GSMPWR A2
 #define GSMDTR A1
 #define GSMINT A0 //gsm ring interrupt
-#define IMU_POWER 17  //A3
+#define IMU_POWER A3  //A3-17
 
 //gsm related
 #define GSMBAUDRATE 9600
@@ -321,10 +322,10 @@ void loop()
     else if (get_logger_version() == 8)
     {
       // Sends rain gauge data via LoRa
-      // get_Due_Data(0, get_serverNum_from_flashMem());
+      get_Due_Data(0, get_serverNum_from_flashMem());
       delay_millis(1000);
       send_rain_data(1);
-      // send_thru_lora(dataToSend);
+      send_thru_lora(dataToSend);
       attachInterrupt(RTCINTPIN, wake, FALLING);
     }    
     else if (get_logger_version() == 9)
@@ -351,6 +352,15 @@ void loop()
       off_IMU();
       attachInterrupt(RTCINTPIN, wake, FALLING);
     }
+    else if (get_logger_version() == 11)
+    {
+      // Sends rain gauge data ONLY
+      turn_ON_GSM();
+      send_rain_data(0);
+      delay_millis(1000);
+      turn_OFF_GSM();
+      attachInterrupt(RTCINTPIN, wake, FALLING);
+    }
     else
     {
       //default arQ like sending
@@ -371,11 +381,11 @@ void loop()
   {
     if (get_logger_version() == 2)
     {
-      wakeGSM();
+      // wakeGSM();
       flashLed(LED_BUILTIN, 2, 50);
       //LoRa transmitter of version 5 datalogger
       get_Due_Data(2, get_serverNum_from_flashMem());
-      sleepGSM();
+      // sleepGSM();
     }
     else
     {
@@ -387,23 +397,20 @@ void loop()
 
   if (gsmRingFlag)
   {
-    // wakeGSM();
     flashLed(LED_BUILTIN, 3, 50);
 
     GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
-    delay(300);
+    delay_millis(300);
     while (GSMSerial.available() > 0)
     {
       processIncomingByte(GSMSerial.read());
     }
-
     attachInterrupt(GSMINT, ringISR, FALLING);
-    // sleepGSM();
     gsmRingFlag = false;
   }
 
   setAlarmEvery30(alarmFromFlashMem());
-  delay(75);
+  delay_millis(75);
   rtc.clearINTStatus();
 
   attachInterrupt(GSMINT, ringISR, FALLING);
@@ -457,9 +464,9 @@ void init_lora()
 
   // manual reset
   digitalWrite(RFM95_RST, LOW);
-  delay(10);
+  delay_millis(10);
   digitalWrite(RFM95_RST, HIGH);
-  delay(10);
+  delay_millis(10);
 
   while (!rf95.init())
   {
@@ -505,7 +512,7 @@ void send_thru_lora(char *radiopacket)
   Serial.println((char *)payload);
   // Serial.println("sending payload!");
   rf95.send(payload, length); //sending data to LoRa
-  delay(100);
+  delay_millis(100);
 }
 
 void receive_lora_data(uint8_t mode)
@@ -795,7 +802,7 @@ void get_rssi(uint8_t mode)
     strncat(rssiString, Ctimestamp, sizeof(Ctimestamp));
     // Serial.println(rssiString);
   }
-  delay(1000);
+  delay_millis(1000);
   send_thru_gsm(rssiString, get_serverNum_from_flashMem());
   // delay(1000);
 }
@@ -921,11 +928,11 @@ void send_rain_data(uint8_t sendTo)
   // strncat(dataToSend, _csq, sizeof(_csq));
   strncat(dataToSend, ",", 1);
   strncat(dataToSend, Ctimestamp, sizeof(Ctimestamp));
-  // if (sendTo == 1)
-  // {
-  //   strncat(dataToSend, "<<", 2);
-  // }
-  delay(500);
+  if (get_logger_version() == 6)
+  {
+    strncat(dataToSend, "<<", 2);
+  }
+  delay_millis(500);
   if (sendTo == 1)
   {
     send_thru_lora(dataToSend);
@@ -933,7 +940,7 @@ void send_rain_data(uint8_t sendTo)
   else
   {
     send_thru_gsm(dataToSend, get_serverNum_from_flashMem());
-    delay(500);
+    delay_millis(500);
     resetRainTips();
   }
 }
@@ -988,7 +995,7 @@ char *read_batt_vol(uint8_t ver)
 float readBatteryVoltage(uint8_t ver)
 {
   float measuredvbat;
-  if ((ver == 3) || (ver == 9) || (ver == 10))
+  if ((ver == 3) || (ver == 9) || (ver == 10) || (ver == 11))
   {
     measuredvbat = analogRead(VBATPIN); //Measure the battery voltage at pin A7
     measuredvbat *= 2;                  // we divided by 2, so multiply back
@@ -1061,7 +1068,7 @@ void get_Due_Data(uint8_t mode, String serverNum)
 
   readTimeStamp();
   turn_ON_due(get_logger_version());
-  delay(500);
+  delay_millis(500);
 
   sensCommand = passCommand.read();
   command[0] = '\0';
@@ -1084,7 +1091,7 @@ void get_Due_Data(uint8_t mode, String serverNum)
     for (int i = 0; i < 250; ++i)
       streamBuffer[i] = 0x00;
     DUESerial.readBytesUntil('\n', streamBuffer, 250);
-    delay(500);
+    delay_millis(500);
 
     if (strstr(streamBuffer, ">>"))
     {
@@ -1147,7 +1154,7 @@ void get_Due_Data(uint8_t mode, String serverNum)
   }
   if (mode == 2 || mode == 6 || mode == 7 || mode == 8)
   {
-    delay(2000);
+    delay_millis(2000);
     send_thru_lora(read_batt_vol(mode));
   }
   turn_OFF_due(get_logger_version());
@@ -1208,18 +1215,18 @@ void no_data_from_senslope(uint8_t mode)
 void turn_ON_due(uint8_t mode)
 {
   Serial.println("Turning ON Custom Due. . .");
-  pinMode(DUETRIG, OUTPUT);
-  delay(100);
+  // pinMode(DUETRIG, OUTPUT);
+  // delay_millis(100);
   digitalWrite(DUETRIG, HIGH);
-  delay(100);
+  delay_millis(100);
 }
 
 void turn_OFF_due(uint8_t mode)
 {
   Serial.println("Turning OFF Custom Due. . .");
   digitalWrite(DUETRIG, LOW);
-  delay(100);
-  pinMode(DUETRIG, INPUT);
+  delay_millis(100);
+  // pinMode(DUETRIG, INPUT);
 }
 
 void rainISR()

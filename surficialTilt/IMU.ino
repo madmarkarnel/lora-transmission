@@ -25,20 +25,25 @@ void on_IMU()
   Serial.println("Turning ON IMU sensor");
   // pinMode(IMU_POWER, OUTPUT);
   // delay(100);
+  turn_ON_due(0); //added for testing only
   digitalWrite(IMU_POWER, HIGH);
-  delay(100);
+  delay_millis(100);
   init_IMU();
-  delay(100);
+  delay_millis(100);
 }
 
 void off_IMU()
 {
   Serial.println("Turning OFF IMU sensor");
-  delay(100);
+  delay_millis(100);
   digitalWrite(IMU_POWER, LOW);
+  turn_OFF_due(0);  //added for testing only
   // pinMode(IMU_POWER, INPUT);
 }
 
+/**Read Sensor IMU Data
+ * calibrated: 0 or 1
+*/
 char *read_IMU_data(int calib)
 {
   int *data;
@@ -56,7 +61,18 @@ char *read_IMU_data(int calib)
   else
     data = get_raw_data();
   /* MADSTA*R*accelerometer(x,y,z),magnetometer(x,y,z), gyro(x,y,z), 200901142120*/
-  strncpy((IMUdataToSend), (get_logger_A_from_flashMem()), (20));
+  if (get_logger_version() == 10)
+  {
+    //send to LoRa
+    strncpy(IMUdataToSend, ">>", 2);
+    strncat((IMUdataToSend), (get_logger_A_from_flashMem()), (20));
+  }
+  else
+  {
+    //send to GSM
+    strncpy((IMUdataToSend), (get_logger_A_from_flashMem()), (20));
+  }
+
   if (get_calib_param() == 1)
   {
     strncat(IMUdataToSend, "*F*", 3);
@@ -80,7 +96,7 @@ char *read_IMU_data(int calib)
 
   strncat(IMUdataToSend, ",", 1);
   strncat(IMUdataToSend, Ctimestamp, sizeof(Ctimestamp));
-  delay(100);
+  delay_millis(100);
   Serial.println(IMUdataToSend);
   return IMUdataToSend;
 }
@@ -200,7 +216,7 @@ int *get_calib_data()
     raw_data = get_raw_data();
     for (int j = 0; j < 9; j++)
       ave_data[j] = ave_data[j] + raw_data[j];
-    delay(1);
+    delay_millis(1);
   }
 
   for (int j = 0; j < 9; j++)
