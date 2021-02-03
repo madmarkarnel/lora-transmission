@@ -60,17 +60,17 @@ void getAtcommand()
     if (get_logger_version() == 0)
     {
       //default arQ like sending
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       get_Due_Data(1, get_serverNum_from_flashMem());
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
     else if (get_logger_version() == 1)
     {
       //arQ + 1 LoRa receiver
       if (gsmPwrStat)
       {
-        turn_ON_GSM();
+        turn_ON_GSM(get_gsm_power_mode());
       }
       get_Due_Data(1, get_serverNum_from_flashMem());
       send_rain_data(0);
@@ -80,7 +80,7 @@ void getAtcommand()
       }
       if (gsmPwrStat)
       {
-        turn_OFF_GSM();
+        turn_OFF_GSM(get_gsm_power_mode());
       }
     }
     else if (get_logger_version() == 2)
@@ -91,26 +91,26 @@ void getAtcommand()
     else if (get_logger_version() == 3)
     {
       //only one trasmitter
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       receive_lora_data(3);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
     else if (get_logger_version() == 4)
     {
       //Two transmitter
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       receive_lora_data(4);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
     else if (get_logger_version() == 5)
     {
       // Three transmitter
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       receive_lora_data(5);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
     else if (get_logger_version() == 6)
     {
@@ -138,12 +138,12 @@ void getAtcommand()
       Serial.println(get_logger_version());
       // Sends IMU sensor data to GSM
       on_IMU();
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       delay_millis(1000);
       send_thru_gsm(read_IMU_data(get_calib_param()), get_serverNum_from_flashMem());
       delay_millis(1000);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
       off_IMU();
     }
     else if (get_logger_version() == 10)
@@ -163,10 +163,10 @@ void getAtcommand()
       Serial.print("Datalogger verion: ");
       Serial.println(get_logger_version());
       // Sends rain gauge data ONLY
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       delay_millis(1000);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
     else
     {
@@ -220,10 +220,10 @@ void getAtcommand()
     Serial.println("Exiting debug mode!");
     //real time clock alarm settings
     setAlarmEvery30(alarmFromFlashMem());
-    delay(75);
+    delay_millis(75);
     rtc.clearINTStatus(); // needed to re-trigger rtc
     debug_flag = 0;
-    turn_OFF_GSM();
+    turn_OFF_GSM(get_gsm_power_mode());
   }
   else if (command == "F")
   {
@@ -231,6 +231,9 @@ void getAtcommand()
     Serial.println(get_serverNum_from_flashMem());
     if (isChangeParam())
       changeServerNumber();
+    delay_millis(100);
+    Serial.print(" New Server Number: ");
+    Serial.println(get_serverNum_from_flashMem());
   }
   else if (command == "G")
   {
@@ -240,38 +243,69 @@ void getAtcommand()
     Serial.println(read_batt_vol(get_logger_version()));
   }
   else if (command == "H")
-  {
+  { /*
     on_IMU();
-    // turn_ON_GSM();
-    // send_rain_data(0);
     delay_millis(1000);
-    // send_thru_gsm(read_IMU_data(get_calib_param()), get_serverNum_from_flashMem());
     read_IMU_data(get_calib_param()); //print IMU sensor Datalogger
     delay_millis(1000);
     off_IMU();
-
-    /*
-    readTimeStamp();
-    char testMsg[200] = "SENSLOPE,SENSORPOLL";
-    strncat(testMsg, ",", 1);
-    strncat(testMsg, Ctimestamp, 168);
-    send_thru_gsm(testMsg, get_serverNum_from_flashMem());
-    testMsg[0] = '\0';
     */
+
+    Serial.println("AT + CNMI");
+    GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
+    delay_millis(300);
+    Serial.println("after CNMI");
+    while (GSMSerial.available() > 0)
+    {
+      Serial.println("inside while loop . . .");
+      processIncomingByte(GSMSerial.read());
+    }
+
+    Serial.println("delete sms");
+    gsmDeleteReadSmsInbox();
+    Serial.println("end . . .");
   }
   else if (command == "I")
   {
-    //check gsm response
-    // GSMSerial.write("AT\r");
-    // gsmReadOK();
-    // GSMSerial.write("AT+CSQ\r");
-    // gsmReadOK();
-    // getCSQval(readGSMResponse());
+    Serial.println("GSM receive test!");
+    flashLed(LED_BUILTIN, 3, 50);
+    /*
+    do
+    {
+      Serial.println("starting do. . .");
+      GSMSerial.write("AT\r"); //gsm initialization
+      delay_millis(50);
+      GSMSerial.write("AT+CSCLK=0\r");
+      gsmReadOK();
+      GSMSerial.write("AT+CMGF=1\r");
+      gsmReadOK();
+      GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
+      delay_millis(300);
+      processIncomingByte(GSMSerial.read());
+    } while (GSMSerial.available() > 0);
+    */
+
+    Serial.println("waking UP GSM from sleep");
+    GSMSerial.write("AT\r"); //gsm initialization
+    delay_millis(50);
+    GSMSerial.write("AT+CSCLK=0\r");
+    gsmReadOK();
+    delay_millis(5000);
+    Serial.println("GSM ready . . .");
+
+    Serial.println("AT + CNMI");
     GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
+    delay_millis(300);
+    Serial.println("after CNMI");
     while (GSMSerial.available() > 0)
     {
+      Serial.println("inside while loop . . .");
       processIncomingByte(GSMSerial.read());
     }
+
+    Serial.println("delete sms");
+    gsmDeleteReadSmsInbox();
+    Serial.println("end . . .");
   }
   else if (command == "J")
   {
@@ -287,6 +321,8 @@ void getAtcommand()
     Serial.println(get_password_from_flashMem());
     if (isChangeParam())
       changePassword();
+    delay_millis(300);
+    Serial.println(get_password_from_flashMem());
     Serial.readStringUntil('\r\n');
   }
   else if (command == "L")
@@ -364,7 +400,6 @@ void getAtcommand()
     Serial.println(rainTips);
     delay_millis(20);
     resetRainTips();
-    // attachInterrupt(digitalPinToInterrupt(RAININT), rainISR, FALLING);
   }
   else if (command == "Q")
   {
@@ -376,12 +411,12 @@ void getAtcommand()
   }
   else if (command == "R")
   {
-    // resetGSM();
-    on_IMU();
-    send_thru_lora(read_IMU_data(get_calib_param()));
-    delay_millis(1000);
-    send_rain_data(1);
-    off_IMU();
+    resetGSM();
+    // on_IMU();
+    // send_thru_lora(read_IMU_data(get_calib_param()));
+    // delay_millis(1000);
+    // send_rain_data(1);
+    // off_IMU();
   }
   else if (command == "S")
   {
@@ -413,22 +448,20 @@ void getAtcommand()
   }
   else if (command == "U")
   {
-    // turn_ON_GSM();
     Serial.println("sending rain gauge data . . .");
     send_rain_data(0);
-    // delay(1000);
-    // get_rssi(get_logger_version());
-    // turn_OFF_GSM();
   }
   else if (command == "V")
   {
-    // sleepGSM();
-    turn_OFF_GSM();
+    turn_OFF_GSM(get_gsm_power_mode());
   }
   else if (command == "W")
   {
-    // wakeGSM();
-    turn_ON_GSM();
+    Serial.print("Current gsm power mode: ");
+    Serial.println(get_gsm_power_mode());
+    if (isChangeParam())
+      setGsmPowerMode();
+    Serial.readStringUntil('\r\n');
   }
   else if (command == "X")
   {
@@ -449,7 +482,6 @@ void getAtcommand()
   }
   else if (command == "Z")
   {
-    //do something
     Serial.print("Current command: ");
     sensCommand = passCommand.read();
     Serial.println(sensCommand.senslopeCommand);
@@ -473,26 +505,26 @@ void printMenu()
   Serial.println(F("[C] Print this menu"));
   Serial.println(F("[D] Change sending time."));
   Serial.println(F("[E] Exit Debug mode."));
-  Serial.println(F("[F] Change 'server number' from flash memory"));
+  Serial.println(F("[F] Change SERVER NUMBER"));
   Serial.println(F("[G] Print input voltage"));
   Serial.println(F("[H] Test send IMU sensor data"));
   Serial.println(F("[I] GSM receive SMS test"));
-  Serial.println(F("[J] Change logger version from flash memory"));
-  Serial.println(F("[K] Change MCU password"));
+  Serial.println(F("[J] Change LOGGER VERSION"));
+  Serial.println(F("[K] Change MCU PASSWORD"));
   Serial.println(F("[L] Manual GSM commands"));
   Serial.println(F("[M] Special sending rain data via LoRa"));
-  Serial.println(F("[N] Change datalogger names from memory."));
+  Serial.println(F("[N] Change DATALOGGER NAMES"));
   Serial.println(F("[O] Read GSM CSQ."));
   Serial.println(F("[P] Read rain gauge tip."));
-  Serial.println(F("[Q] IMU data parameters"));
+  Serial.println(F("[Q] Change IMU data parameters"));
   Serial.println(F("[R] Reset GSM"));
   Serial.println(F("[S] Set date and time."));
   Serial.println(F("[T] Parse voltage from remote logger."));
   Serial.println(F("[U] Send rain tips."));
-  Serial.println(F("[V] Sleep GSM"));
-  Serial.println(F("[W] Wake GSM"));
-  Serial.println(F("[X] wait for Lora data"));
-  Serial.println(F("[Y] Send SMS"));
+  Serial.println(F("[V] Sleep gsm via AT commands"));
+  Serial.println(F("[W] Set GSM POWER MODE"));
+  Serial.println(F("[X] Wait for LoRa data"));
+  Serial.println(F("[Y] Send CUSTOM SMS"));
   Serial.println(F("[Z] Change SENSLOPE command."));
   Serial.println(F("-----------------------------------------------"));
 }
@@ -540,18 +572,18 @@ uint8_t get_calib_param()
 void setLoggerVersion()
 {
   int version;
-  Serial.println("[0] Sendng data using GSM only");                //arQ like function only
-  Serial.println("[1] Version 5 datalogger LoRa with GSM");        //arQ + LoRa rx
-  Serial.println("[2] LoRa transmitter for version 5 datalogger"); //TX LoRa
+  Serial.println("[0] Sending sensor data using GSM only (arQ like function)"); //arQ like function only
+  Serial.println("[1] Version 5 GSM with LoRa tx (arQ + LoRa RX)");             //arQ + LoRa rx
+  Serial.println("[2] LoRa transmitter for version 5 datalogger");              //TX LoRa
   Serial.println("[3] Gateway Mode with only ONE LoRa transmitter");
   Serial.println("[4] Gateway Mode with TWO LoRa transmitter");
   Serial.println("[5] Gateway Mode with THREE LoRa transmitter");
   Serial.println("[6] LoRa transmitter for Raspberry Pi");         //TX LoRa
   Serial.println("[7] Sends sensor and rain gauge data via LoRa"); //TX LoRa
-  Serial.println("[8] LoRa dummy transmitter");                    //TX LoRa
-  Serial.println("[9] GSM - Surficial Tilt");
-  Serial.println("[10] LoRa Tx - Surficial Tilt");
-  Serial.println("[11] Rain gauge mode only");
+  Serial.println("[8] LoRa dummy transmitter (for testing only)"); //TX LoRa
+  Serial.println("[9] Surficial Tilt - GSM mode");
+  Serial.println("[10] Surficial Tilt - LoRa TX");
+  Serial.println("[11] Rain gauge sensor only - GSM");
   delay_millis(1000);
   while (!Serial.available())
   {
@@ -571,6 +603,33 @@ uint8_t get_logger_version()
 {
   int lversion = loggerVersion.read();
   return lversion;
+}
+
+void setGsmPowerMode()
+{
+  int gsm_power;
+  Serial.println("[0] Hardware power ON or OFF");
+  Serial.println("[1] Sleep and wake via AT commands");
+  Serial.println("[2] GSM power always ON");
+  delay_millis(1000);
+  while (!Serial.available())
+  {
+  }
+  if (Serial.available())
+  {
+    Serial.setTimeout(8000);
+    gsm_power = Serial.parseInt();
+    Serial.print("INPUT = ");
+    Serial.println(gsm_power);
+  }
+  delay_millis(50);
+  gsmPower.write(gsm_power);
+}
+
+uint8_t get_gsm_power_mode()
+{
+  int gsm_mode = gsmPower.read();
+  return gsm_mode;
 }
 
 void setAlarmInterval()
@@ -717,6 +776,7 @@ void changeServerNumber()
 
 void changePassword()
 {
+  Serial.print("Enter MCU password: ");
   Serial.setTimeout(15000);
   String inPass = Serial.readStringUntil('\n');
   inPass += ",";

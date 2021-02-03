@@ -364,8 +364,10 @@ void sleepGSM()
 
 void wakeGSM()
 {
+  /* to wake it up, you need to send any AT command, which will be ignored by 
+  the module (so no response), followed (within 5 seconds) by "AT+CSCLK=0\r" */
   GSMSerial.write("AT\r");
-  gsmReadOK();
+  delay_millis(50);
   GSMSerial.write("AT+CSCLK=0\r");
   if (gsmReadOK())
   {
@@ -379,27 +381,67 @@ void wakeGSM()
 
 void resetGSM()
 {
-  int counter = 0;
+  int overflow_counter = 0;
   Serial.println("GSM resetting . . .");
   digitalWrite(GSMRST, LOW);
   delay_millis(500);
   digitalWrite(GSMRST, HIGH);
-  delay_millis(500);
-  do
+  delay_millis(1000);
+  for (int i = 0; i < 6; i++)
   {
     GSMSerial.write("AT\r"); //gsm initialization
     Serial.println("Sending AT cmd");
-  } while ((gsmReadOK() == false));
-  Serial.println("GSM ready");
+    if (gsmReadOK() == true)
+    {
+      Serial.println("Got reply from GSM");
+      break;
+    }
+    Serial.println("No reply from GSM");
+  }
+  gsmManualNetworkConnect();
+  Serial.println("Done resetting GSM");
 }
 
-void turn_ON_GSM()
+void turn_ON_GSM(int _gsmPowerMode)
 {
-  digitalWrite(GSMPWR, HIGH);
-  Serial.println("Turning ON GSM ");
-  delay_millis(20000);
-  int overflow_counter = 0;
+  if (_gsmPowerMode == 0)
+  {
+    digitalWrite(GSMPWR, HIGH);
+    Serial.println("Turning ON GSM ");
+    delay_millis(20000);
+    int overflow_counter = 0;
+    do
+    {
+      gsmManualNetworkConnect();
+      overflow_counter++;
+    } while (readCSQ() == 0 || overflow_counter < 2);
 
+    GSMSerial.write("ATE0\r"); //turn off echo
+    if (gsmReadOK())
+    {
+      Serial.println("Turning GSM to NO echo mode");
+      Serial.println("GSM is no now ready!");
+    }
+    else
+    {
+      Serial.println("");
+      Serial.println("Check GSM if connected or powered ON!");
+    }
+    Serial.print("CSQ: ");
+    Serial.println(readCSQ());
+  }
+  else if (_gsmPowerMode == 1)
+  {
+    wakeGSM();
+  }
+  else
+  {
+  }
+}
+
+void gsm_network_connect()
+{
+  int overflow_counter = 0;
   do
   {
     gsmManualNetworkConnect();
@@ -421,6 +463,25 @@ void turn_ON_GSM()
   Serial.println(readCSQ());
 }
 
+void turn_OFF_GSM(int _gsmPowerMode)
+{
+  gsmDeleteReadSmsInbox();
+  delay_millis(1000);
+  if (_gsmPowerMode == 0)
+  {
+    delay_millis(5000);
+    digitalWrite(GSMPWR, LOW);
+    Serial.println("Turning OFF GSM . . .");
+  }
+  else if (_gsmPowerMode == 1)
+  {
+    sleepGSM();
+  }
+  else
+  {
+  }
+}
+
 void delay_millis(int _delay)
 {
   uint8_t delay_turn_on_flag = 0;
@@ -428,19 +489,11 @@ void delay_millis(int _delay)
   // Serial.println("starting delay . . .");
   do
   {
-    if((millis() - _delayStart) > _delay)
+    if ((millis() - _delayStart) > _delay)
     {
       _delayStart = millis();
       delay_turn_on_flag = 1;
       // Serial.println("delay timeout!");
     }
   } while (delay_turn_on_flag == 0);
-}
-
-void turn_OFF_GSM()
-{
-  gsmDeleteReadSmsInbox();
-  delay_millis(5000);
-  digitalWrite(GSMPWR, LOW);
-  Serial.println("Turning OFF GSM . . .");
 }

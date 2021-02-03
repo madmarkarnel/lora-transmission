@@ -34,6 +34,7 @@ Modified: October 23 2020
 #include <Adafruit_FXAS21002C.h>
 #include <Adafruit_FXOS8700.h>
 #include <Adafruit_Sensor.h>
+#include <Adafruit_SleepyDog.h>
 
 #define BAUDRATE 115200
 #define DUEBAUD 9600
@@ -46,8 +47,8 @@ Modified: October 23 2020
 #define GSMRST 12
 #define GSMPWR A2
 #define GSMDTR A1
-#define GSMINT A0 //gsm ring interrupt
-#define IMU_POWER A3  //A3-17
+#define GSMINT A0    //gsm ring interrupt
+#define IMU_POWER A3 //A3-17
 
 //gsm related
 #define GSMBAUDRATE 9600
@@ -115,8 +116,9 @@ uint8_t serial_flag = 0;
 uint8_t debug_flag = 0;
 uint8_t rcv_LoRa_flag = 0;
 uint16_t store_rtc = 00; //store rtc alarm
+// uint8_t gsm_power = 0; //gsm power (sleep or hardware ON/OFF)
 
-//GSM 
+//GSM
 String serverNumber = ("639175972526");
 bool gsmPwrStat = true;
 String tempServer, regServer;
@@ -162,7 +164,8 @@ typedef struct
 } smsPassword;
 smsPassword flashPassword;
 
-typedef struct {
+typedef struct
+{
   boolean valid;
   char accel_param[100];
   char magneto_param[100];
@@ -176,18 +179,18 @@ typedef struct {
 FlashStorage(alarmStorage, int);
 FlashStorage(loggerVersion, int);
 FlashStorage(imuRawCalib, int);
+FlashStorage(gsmPower, int);
 FlashStorage(passCommand, Senslope);
 FlashStorage(newServerNum, serNumber);
 FlashStorage(flashLoggerName, SensorName);
 FlashStorage(flashPasswordIn, smsPassword);
 FlashStorage(flash_imu_calib, imu_calib);
 
-
 void setup()
 {
   Serial.begin(BAUDRATE);
   DUESerial.begin(DUEBAUD);
-  GSMSerial.begin(9600);
+  GSMSerial.begin(115200);
 
   /* Assign pins 10 & 11 UART SERCOM functionality */
   pinPeripheral(10, PIO_SERCOM);
@@ -221,6 +224,17 @@ void setup()
 
   setAlarmEvery30(alarmFromFlashMem()); //rtc alarm settings
   rf95.sleep();
+
+  //GSM power related
+  if (get_gsm_power_mode() == 1)
+  {
+    gsm_network_connect();
+    turn_OFF_GSM(get_gsm_power_mode());
+  }
+  else if (get_gsm_power_mode() == 2)
+  {
+    gsm_network_connect();
+  }
 
   /*Enter DEBUG mode within 10 seconds*/
   Serial.println("Press 'C' to go DEBUG mode!");
@@ -258,7 +272,7 @@ void loop()
     {
       if (gsmPwrStat)
       {
-        turn_ON_GSM();
+        turn_ON_GSM(get_gsm_power_mode());
       }
       get_Due_Data(1, get_serverNum_from_flashMem());
       send_rain_data(0);
@@ -269,7 +283,7 @@ void loop()
       attachInterrupt(RTCINTPIN, wake, FALLING);
       if (gsmPwrStat)
       {
-        turn_OFF_GSM();
+        turn_OFF_GSM(get_gsm_power_mode());
       }
     }
     else if (get_logger_version() == 2)
@@ -281,29 +295,29 @@ void loop()
     else if (get_logger_version() == 3)
     {
       //only one trasmitter
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       receive_lora_data(3);
       attachInterrupt(RTCINTPIN, wake, FALLING);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
     else if (get_logger_version() == 4)
     {
       //Two transmitter
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       receive_lora_data(4);
       attachInterrupt(RTCINTPIN, wake, FALLING);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
     else if (get_logger_version() == 5)
     {
       // Three transmitter
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       receive_lora_data(5);
       attachInterrupt(RTCINTPIN, wake, FALLING);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
     else if (get_logger_version() == 6)
     {
@@ -327,20 +341,20 @@ void loop()
       send_rain_data(1);
       send_thru_lora(dataToSend);
       attachInterrupt(RTCINTPIN, wake, FALLING);
-    }    
+    }
     else if (get_logger_version() == 9)
     {
       // Sends IMU sensor data to GSM
       on_IMU();
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       delay_millis(1000);
-      send_thru_gsm(read_IMU_data(get_calib_param()),get_serverNum_from_flashMem());
+      send_thru_gsm(read_IMU_data(get_calib_param()), get_serverNum_from_flashMem());
       delay_millis(1000);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
       off_IMU();
       attachInterrupt(RTCINTPIN, wake, FALLING);
-    }    
+    }
     else if (get_logger_version() == 10)
     {
       // Sends IMU sensor data to LoRa
@@ -355,21 +369,20 @@ void loop()
     else if (get_logger_version() == 11)
     {
       // Sends rain gauge data ONLY
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       delay_millis(1000);
-      turn_OFF_GSM();
+      turn_OFF_GSM(get_gsm_power_mode());
       attachInterrupt(RTCINTPIN, wake, FALLING);
     }
     else
     {
       //default arQ like sending
-      turn_ON_GSM();
+      turn_ON_GSM(get_gsm_power_mode());
       send_rain_data(0);
       get_Due_Data(1, get_serverNum_from_flashMem());
       attachInterrupt(RTCINTPIN, wake, FALLING);
-      turn_OFF_GSM();
-      // sleepGSM();
+      turn_OFF_GSM(get_gsm_power_mode());
     }
 
     rf95.sleep();
@@ -398,13 +411,16 @@ void loop()
   if (gsmRingFlag)
   {
     flashLed(LED_BUILTIN, 3, 50);
-
+    GSMSerial.write("AT\r"); //gsm initialization
+    delay_millis(50);
     GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
     delay_millis(300);
     while (GSMSerial.available() > 0)
     {
       processIncomingByte(GSMSerial.read());
     }
+    gsmDeleteReadSmsInbox();
+    turn_OFF_GSM(get_gsm_power_mode());
     attachInterrupt(GSMINT, ringISR, FALLING);
     gsmRingFlag = false;
   }
@@ -417,6 +433,12 @@ void loop()
   attachInterrupt(RAININT, rainISR, FALLING);
   attachInterrupt(RTCINTPIN, wake, FALLING);
   sleepNow();
+}
+
+void enable_watchdog()
+{
+  Serial.println("Watchdog Test!");
+  int countDownMS = Watchdog.enable(); //max of 16 seconds
 }
 
 void wakeAndSleep(uint8_t verSion)
@@ -724,6 +746,11 @@ void receive_lora_data(uint8_t mode)
   flashLed(LED_BUILTIN, 3, 80);
 }
 
+/**RTC Pin interrupt
+ * hardware interrupt from RTC
+ * microcontroller will wake from sleep
+ * execute the process
+*/
 void wake()
 {
   OperationFlag = true;
@@ -1001,15 +1028,15 @@ float readBatteryVoltage(uint8_t ver)
     measuredvbat *= 2;                  // we divided by 2, so multiply back
     measuredvbat *= 3.3;                // Multiply by 3.3V, our reference voltage
     measuredvbat /= 1024;               // convert to voltage
-    measuredvbat += 0.28;                // add 0.7V drop in schottky diode
+    measuredvbat += 0.28;               // add 0.7V drop in schottky diode
   }
   else
   {
-  /* Voltage Divider 1M and  100k */
-  measuredvbat = analogRead(VBATEXT);
-  measuredvbat *= 3.3;        // reference voltage
-  measuredvbat /= 1024.0;     // adc max count
-  measuredvbat *= 11.0;       // (100k+1M)/100k
+    /* Voltage Divider 1M and  100k */
+    measuredvbat = analogRead(VBATEXT);
+    measuredvbat *= 3.3;    // reference voltage
+    measuredvbat /= 1024.0; // adc max count
+    measuredvbat *= 11.0;   // (100k+1M)/100k
   }
   return measuredvbat;
 }
