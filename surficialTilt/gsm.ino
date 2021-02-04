@@ -66,8 +66,11 @@ void manualGSMcmd()
   cmdAll.toCharArray(cmdAllchar, sizeof(cmdAllchar));
 
   GSMSerial.write(cmdAllchar);
-  Serial.println(readGSMResponse());
-  gsmSerialFlush();
+  delay_millis(500);
+  while (GSMSerial.available() > 0)
+  {
+    processIncomingByte(GSMSerial.read(), 1);
+  }
 }
 
 /** Over the air commands
@@ -169,24 +172,38 @@ void process_data(char *data)
         Serial.println(get_password_from_flashMem());
         send_thru_gsm(get_password_from_flashMem(), regServer);
       }
+    }    
+    else if (strstr(smsCommand, "RESET_NOW"))
+    {
+      if (regServer == tempServer)
+      {
+        flashLed(LED_BUILTIN, 3, 50);
+        send_thru_gsm(get_password_from_flashMem(), "Manual Reset! - watchdog activated");
+        enable_watchdog();
+      }
     }
   }
 }
 
 /* Read GSM reply; non read blocking process*/
-void processIncomingByte(const byte inByte)
+void processIncomingByte(const byte inByte, int _mode)
 {
-  const unsigned int MAX_INPUT = 256; // how much serial data we expect before a newline
-  static char input_line[MAX_INPUT];
+  // const unsigned int MAX_INPUT = 256; // how much serial data we expect before a newline
+  static char input_line[256];
   static unsigned int input_pos = 0;
 
   switch (inByte)
   {
   case '\n':                   // end of text
     input_line[input_pos] = 0; // terminating null byte
-
-    process_data(input_line);
-
+    if (_mode == 1)
+    {
+      Serial.println(input_line);
+    }
+    else
+    {
+      process_data(input_line);
+    }
     // reset buffer for next time
     input_pos = 0;
     break;
@@ -200,7 +217,6 @@ void processIncomingByte(const byte inByte)
       input_line[input_pos++] = inByte;
     break;
   } // end of switch
-
 } // end of processIncomingByte
 
 char *readGSMResponse()

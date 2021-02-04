@@ -417,7 +417,7 @@ void loop()
     delay_millis(300);
     while (GSMSerial.available() > 0)
     {
-      processIncomingByte(GSMSerial.read());
+      processIncomingByte(GSMSerial.read(), 0);
     }
     gsmDeleteReadSmsInbox();
     turn_OFF_GSM(get_gsm_power_mode());
@@ -438,7 +438,7 @@ void loop()
 void enable_watchdog()
 {
   Serial.println("Watchdog Test!");
-  int countDownMS = Watchdog.enable(); //max of 16 seconds
+  int countDownMS = Watchdog.enable(2000); //max of 16 seconds
 }
 
 void wakeAndSleep(uint8_t verSion)
@@ -850,46 +850,26 @@ char *stationName_from_flashMem()
 
 char *get_logger_A_from_flashMem()
 {
-  String getLoggerA;
-  char new_loggerA[10];
   loggerName = flashLoggerName.read();
-  getLoggerA = loggerName.sensorA;
-  getLoggerA.replace("\r", "");
-  getLoggerA.toCharArray(new_loggerA, 10);
-  return new_loggerA;
+  return loggerName.sensorA;
 }
 
 char *get_logger_B_from_flashMem()
 {
-  String getLoggerB;
-  char new_loggerB[10];
   loggerName = flashLoggerName.read();
-  getLoggerB = loggerName.sensorB;
-  getLoggerB.replace("\r", "");
-  getLoggerB.toCharArray(new_loggerB, 10);
-  return new_loggerB;
+  return loggerName.sensorB;
 }
 
 char *get_logger_C_from_flashMem()
 {
-  String getLoggerC;
-  char new_loggerC[10];
   loggerName = flashLoggerName.read();
-  getLoggerC = loggerName.sensorC;
-  getLoggerC.replace("\r", "");
-  getLoggerC.toCharArray(new_loggerC, 10);
-  return new_loggerC;
+  return loggerName.sensorC;
 }
 
 char *get_logger_D_from_flashMem()
 {
-  String getLoggerD;
-  char new_loggerD[10];
   loggerName = flashLoggerName.read();
-  getLoggerD = loggerName.sensorD;
-  getLoggerD.replace("\r", "");
-  getLoggerD.toCharArray(new_loggerD, 10);
-  return new_loggerD;
+  return loggerName.sensorD;
 }
 
 String get_serverNum_from_flashMem()
@@ -903,13 +883,8 @@ String get_serverNum_from_flashMem()
 
 char *get_password_from_flashMem()
 {
-  char charPass[50];
-  String flashPass;
   flashPassword = flashPasswordIn.read();
-  flashPass = flashPassword.keyword;
-  flashPass.replace("\r", "");
-  flashPass.toCharArray(charPass, sizeof(charPass));
-  return charPass;
+  return flashPassword.keyword;
 }
 
 /**

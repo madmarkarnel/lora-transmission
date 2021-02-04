@@ -187,6 +187,7 @@ void getAtcommand()
   }
   else if (command == "D")
   {
+    /*
     if (alarmFromFlashMem() == 0)
     {
       Serial.println("Alarm every 00 and 30 minutes.");
@@ -211,6 +212,10 @@ void getAtcommand()
     {
       Serial.println("Alarm every 5,15,25. . . minutes.");
     }
+    */
+    Serial.print("Alarm stored: ");
+    Serial.println(alarmFromFlashMem());
+    print_rtcInterval();
     if (isChangeParam())
       setAlarmInterval();
     Serial.readStringUntil('\r\n');
@@ -229,11 +234,10 @@ void getAtcommand()
   {
     Serial.print("Server Number: ");
     Serial.println(get_serverNum_from_flashMem());
+    Serial.println("Default server numbers: GLOBE - 639175972526 ; SMART - 639088125642");
     if (isChangeParam())
       changeServerNumber();
     delay_millis(100);
-    Serial.print(" New Server Number: ");
-    Serial.println(get_serverNum_from_flashMem());
   }
   else if (command == "G")
   {
@@ -243,27 +247,27 @@ void getAtcommand()
     Serial.println(read_batt_vol(get_logger_version()));
   }
   else if (command == "H")
-  { /*
-    on_IMU();
-    delay_millis(1000);
-    read_IMU_data(get_calib_param()); //print IMU sensor Datalogger
-    delay_millis(1000);
-    off_IMU();
-    */
+  {
+    // on_IMU();
+    // delay_millis(1000);
+    // read_IMU_data(get_calib_param()); //print IMU sensor Datalogger
+    // delay_millis(1000);
+    // off_IMU();
 
     Serial.println("AT + CNMI");
     GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
-    delay_millis(300);
+    // delay_millis(300);
     Serial.println("after CNMI");
     while (GSMSerial.available() > 0)
     {
       Serial.println("inside while loop . . .");
-      processIncomingByte(GSMSerial.read());
+      processIncomingByte(GSMSerial.read(), 0);
     }
 
     Serial.println("delete sms");
     gsmDeleteReadSmsInbox();
     Serial.println("end . . .");
+    
   }
   else if (command == "I")
   {
@@ -300,7 +304,7 @@ void getAtcommand()
     while (GSMSerial.available() > 0)
     {
       Serial.println("inside while loop . . .");
-      processIncomingByte(GSMSerial.read());
+      processIncomingByte(GSMSerial.read(), 0);
     }
 
     Serial.println("delete sms");
@@ -311,6 +315,7 @@ void getAtcommand()
   {
     Serial.print("Logger version: ");
     Serial.println(get_logger_version());
+    printLoggerVersion();
     if (isChangeParam())
       setLoggerVersion();
     Serial.readStringUntil('\r\n');
@@ -321,8 +326,6 @@ void getAtcommand()
     Serial.println(get_password_from_flashMem());
     if (isChangeParam())
       changePassword();
-    delay_millis(300);
-    Serial.println(get_password_from_flashMem());
     Serial.readStringUntil('\r\n');
   }
   else if (command == "L")
@@ -405,6 +408,8 @@ void getAtcommand()
   {
     Serial.print("IMU Parameter: ");
     Serial.println(get_calib_param());
+    Serial.println("[0] Raw IMU data");
+    Serial.println("[1] Calibrated IMU data");
     if (isChangeParam())
       setIMUdataRawCalib();
     Serial.readStringUntil('\r\n');
@@ -459,6 +464,9 @@ void getAtcommand()
   {
     Serial.print("Current gsm power mode: ");
     Serial.println(get_gsm_power_mode());
+    Serial.println("[0] Hardware power ON or OFF");
+    Serial.println("[1] Sleep and wake via AT commands");
+    Serial.println("[2] GSM power always ON");
     if (isChangeParam())
       setGsmPowerMode();
     Serial.readStringUntil('\r\n');
@@ -494,6 +502,7 @@ void getAtcommand()
   else
   {
     Serial.println("Command invalid!");
+    Serial.println(" ");
   }
 }
 
@@ -531,24 +540,20 @@ void printMenu()
 
 void print_rtcInterval()
 {
-  Serial.print("Alarm interval every: ");
-  Serial.println(store_rtc);
-  Serial.println("------------------------------------------------");
-  Serial.println("Enter alarm settings:");
+  // Serial.println("------------------------------------------------");
   Serial.println("[0] Alarm for every 0 and 30 minutes interval");
   Serial.println("[1] Alarm for every 5 and 35 minutes interval");
   Serial.println("[2] Alarm for every 10 and 40 minutes interval");
   Serial.println("[3] Alarm for every 15 and 45 minutes interval");
   Serial.println("[4] Alarm for every 10 minutes interval");
   Serial.println("[5] Alarm for every 5,15,25. . .  minutes interval");
-  Serial.println("------------------------------------------------");
+  // Serial.println("------------------------------------------------");
 }
 
 void setIMUdataRawCalib()
 {
   int raw_calib;
-  Serial.println("[0] Raw IMU data");
-  Serial.println("[1] Calibrated IMU data");
+  Serial.print("Enter IMU data mode: ");
   while (!Serial.available())
   {
   }
@@ -556,7 +561,7 @@ void setIMUdataRawCalib()
   {
     Serial.setTimeout(8000);
     raw_calib = Serial.parseInt();
-    Serial.print("INPUT = ");
+    Serial.print("IMU mode = ");
     Serial.println(raw_calib);
   }
   delay_millis(50);
@@ -572,6 +577,22 @@ uint8_t get_calib_param()
 void setLoggerVersion()
 {
   int version;
+  Serial.print("Enter datalogger version: ");
+  while (!Serial.available())
+  {
+  }
+  if (Serial.available())
+  {
+    Serial.setTimeout(8000);
+    version = Serial.parseInt();
+    Serial.println(version);
+  }
+  delay_millis(50);
+  loggerVersion.write(version);
+}
+
+void printLoggerVersion()
+{
   Serial.println("[0] Sending sensor data using GSM only (arQ like function)"); //arQ like function only
   Serial.println("[1] Version 5 GSM with LoRa tx (arQ + LoRa RX)");             //arQ + LoRa rx
   Serial.println("[2] LoRa transmitter for version 5 datalogger");              //TX LoRa
@@ -584,19 +605,6 @@ void setLoggerVersion()
   Serial.println("[9] Surficial Tilt - GSM mode");
   Serial.println("[10] Surficial Tilt - LoRa TX");
   Serial.println("[11] Rain gauge sensor only - GSM");
-  delay_millis(1000);
-  while (!Serial.available())
-  {
-  }
-  if (Serial.available())
-  {
-    Serial.setTimeout(8000);
-    version = Serial.parseInt();
-    Serial.print("INPUT = ");
-    Serial.println(version);
-  }
-  delay_millis(50);
-  loggerVersion.write(version);
 }
 
 uint8_t get_logger_version()
@@ -608,10 +616,7 @@ uint8_t get_logger_version()
 void setGsmPowerMode()
 {
   int gsm_power;
-  Serial.println("[0] Hardware power ON or OFF");
-  Serial.println("[1] Sleep and wake via AT commands");
-  Serial.println("[2] GSM power always ON");
-  delay_millis(1000);
+  Serial.print("Enter GSM mode setting: ");
   while (!Serial.available())
   {
   }
@@ -619,7 +624,6 @@ void setGsmPowerMode()
   {
     Serial.setTimeout(8000);
     gsm_power = Serial.parseInt();
-    Serial.print("INPUT = ");
     Serial.println(gsm_power);
   }
   delay_millis(50);
@@ -635,7 +639,7 @@ uint8_t get_gsm_power_mode()
 void setAlarmInterval()
 {
   int alarmSelect;
-  print_rtcInterval();
+  Serial.print("Enter alarm settings: ");
   delay_millis(1000);
   while (!Serial.available())
   {
@@ -644,7 +648,6 @@ void setAlarmInterval()
   {
     Serial.setTimeout(8000);
     alarmSelect = Serial.parseInt();
-    Serial.print("From user = ");
     Serial.println(alarmSelect);
   }
   delay_millis(50);
@@ -768,8 +771,10 @@ void inputLoggerNames()
 void changeServerNumber()
 {
   Serial.setTimeout(15000);
-  Serial.println("Insert server number GLOBE - 639175972526 ; SMART - 639088125642");
+  // Serial.println("Insert server number GLOBE - 639175972526 ; SMART - 639088125642");
+  Serial.print("Enter new server number: ");
   String ser_num = Serial.readStringUntil('\n');
+  Serial.println(ser_num);
   ser_num.toCharArray(flashServerNumber.inputNumber, 50);
   newServerNum.write(flashServerNumber); //save to flash memory
 }
@@ -780,6 +785,7 @@ void changePassword()
   Serial.setTimeout(15000);
   String inPass = Serial.readStringUntil('\n');
   inPass += ",";
+  Serial.println(inPass);
   inPass.toCharArray(flashPassword.keyword, 50);
   flashPasswordIn.write(flashPassword);
 }
@@ -1164,7 +1170,7 @@ bool isChangeParam()
 {
   String serial_line;
   unsigned long serStart = millis();
-
+  Serial.println(" ");
   Serial.println("Enter C to change:");
   do
   {
