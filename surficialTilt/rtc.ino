@@ -248,26 +248,44 @@ void getAtcommand()
   }
   else if (command == "H")
   {
-    // on_IMU();
-    // delay_millis(1000);
-    // read_IMU_data(get_calib_param()); //print IMU sensor Datalogger
-    // delay_millis(1000);
-    // off_IMU();
+    on_IMU();
+    delay_millis(1000);
+    read_IMU_data(get_calib_param()); //print IMU sensor Datalogger
+    delay_millis(1000);
+    off_IMU();
+    Serial.println("AT + CMGF");
+    GSMSerial.write("AT+CMGF=1\r");
+    delay_millis(300);
 
+    /*
     Serial.println("AT + CNMI");
     GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
-    // delay_millis(300);
-    Serial.println("after CNMI");
+    delay_millis(300);
     while (GSMSerial.available() > 0)
     {
-      Serial.println("inside while loop . . .");
-      processIncomingByte(GSMSerial.read(), 0);
+      // processIncomingByte(GSMSerial.read(), 0);
+      String gsm_reply = GSMSerial.readString();
+      if (gsm_reply.indexOf("SENSLOPE,") > -1)
+      {
+        Serial.println("read SENSLOPE");
+        if (gsm_reply.indexOf(",REGISTERNUM") > -1)
+        {
+          Serial.println("Number Registered!");
+        }
+      }
+      // else if (gsm_reply.indexOf(",REGISTERNUM") > -1)
+      // {
+      //   Serial.println("read REGISTERNUM");
+      // }
+      else
+      {
+        Serial.println("Not valid message!");
+      }
     }
-
-    Serial.println("delete sms");
-    gsmDeleteReadSmsInbox();
+    // Serial.println("delete sms");
+    // gsmDeleteReadSmsInbox();
     Serial.println("end . . .");
-    
+    */
   }
   else if (command == "I")
   {
@@ -288,27 +306,25 @@ void getAtcommand()
       processIncomingByte(GSMSerial.read());
     } while (GSMSerial.available() > 0);
     */
-
-    Serial.println("waking UP GSM from sleep");
-    GSMSerial.write("AT\r"); //gsm initialization
-    delay_millis(50);
-    GSMSerial.write("AT+CSCLK=0\r");
-    gsmReadOK();
-    delay_millis(5000);
-    Serial.println("GSM ready . . .");
+    // turn_ON_GSM(get_gsm_power_mode());
 
     Serial.println("AT + CNMI");
+    if (get_gsm_power_mode() == 1)
+    {
+      Serial.println("1st AT + CNMI");
+      GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
+      delay_millis(100);
+    }
     GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
     delay_millis(300);
     Serial.println("after CNMI");
     while (GSMSerial.available() > 0)
     {
-      Serial.println("inside while loop . . .");
       processIncomingByte(GSMSerial.read(), 0);
     }
 
-    Serial.println("delete sms");
-    gsmDeleteReadSmsInbox();
+    // Serial.println("delete sms");
+    // gsmDeleteReadSmsInbox();
     Serial.println("end . . .");
   }
   else if (command == "J")
@@ -453,8 +469,9 @@ void getAtcommand()
   }
   else if (command == "U")
   {
-    Serial.println("sending rain gauge data . . .");
-    send_rain_data(0);
+    // Serial.println("sending rain gauge data . . .");
+    // send_rain_data(0);
+    wakeGSM();
   }
   else if (command == "V")
   {
@@ -784,7 +801,7 @@ void changePassword()
   Serial.print("Enter MCU password: ");
   Serial.setTimeout(15000);
   String inPass = Serial.readStringUntil('\n');
-  inPass += ",";
+  // inPass += ",";
   Serial.println(inPass);
   inPass.toCharArray(flashPassword.keyword, 50);
   flashPasswordIn.write(flashPassword);

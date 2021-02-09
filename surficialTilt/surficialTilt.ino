@@ -124,6 +124,7 @@ bool gsmPwrStat = true;
 String tempServer, regServer;
 char _csq[10];
 char response[150];
+bool registerNumber = false;
 
 /* Pin 11-Rx ; 10-Tx (GSM comms) */
 Uart Serial2(&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -245,6 +246,7 @@ void setup()
     {
       debug_flag = 1;
       Serial.println("Debug Mode!");
+      // turn_ON_GSM(get_gsm_power_mode());
       serial_flag = 1;
     }
     // timeOut in case walang serial na makuha in ~10 seconds
@@ -411,15 +413,19 @@ void loop()
   if (gsmRingFlag)
   {
     flashLed(LED_BUILTIN, 3, 50);
-    GSMSerial.write("AT\r"); //gsm initialization
-    delay_millis(50);
+    if (get_gsm_power_mode() == 1)
+    {
+      Serial.println("1st AT + CNMI");
+      GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
+      delay_millis(100);
+    }
     GSMSerial.write("AT+CNMI=1,2,0,0,0\r");
     delay_millis(300);
     while (GSMSerial.available() > 0)
     {
       processIncomingByte(GSMSerial.read(), 0);
     }
-    gsmDeleteReadSmsInbox();
+    // gsmDeleteReadSmsInbox();
     turn_OFF_GSM(get_gsm_power_mode());
     attachInterrupt(GSMINT, ringISR, FALLING);
     gsmRingFlag = false;
