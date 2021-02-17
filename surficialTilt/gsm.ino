@@ -312,7 +312,7 @@ void process_data(char *data)
 /* Read GSM reply; non read blocking process*/
 void processIncomingByte(const byte inByte, int _mode)
 {
-  // const unsigned int MAX_INPUT = 256; // how much serial data we expect before a newline
+  const unsigned int MAX_INPUT = 256; // how much serial data we expect before a newline
   static char input_line[256];
   static unsigned int input_pos = 0;
 
@@ -550,6 +550,7 @@ void resetGSM()
 
 void turn_ON_GSM(int _gsmPowerMode)
 {
+  disable_watchdog();
   if (_gsmPowerMode == 0)
   {
     digitalWrite(GSMPWR, HIGH);
@@ -583,6 +584,7 @@ void turn_ON_GSM(int _gsmPowerMode)
   else
   {
   }
+  enable_watchdog();
 }
 
 void gsm_network_connect()

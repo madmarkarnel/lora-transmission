@@ -269,122 +269,181 @@ void loop()
   if (OperationFlag)
   {
     flashLed(LED_BUILTIN, 2, 50);
-
+    enable_watchdog();
     if (get_logger_version() == 1)
     {
       if (gsmPwrStat)
       {
         turn_ON_GSM(get_gsm_power_mode());
+        Watchdog.reset();
       }
       get_Due_Data(1, get_serverNum_from_flashMem());
+      Watchdog.reset();
       send_rain_data(0);
+      Watchdog.reset();
       if (getSensorDataFlag == true && OperationFlag == true)
       {
         receive_lora_data(1);
+        Watchdog.reset();
       }
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
       if (gsmPwrStat)
       {
         turn_OFF_GSM(get_gsm_power_mode());
+        Watchdog.reset();
       }
     }
     else if (get_logger_version() == 2)
     {
       //LoRa transmitter of version 5 datalogger
       get_Due_Data(2, get_serverNum_from_flashMem());
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
     }
     else if (get_logger_version() == 3)
     {
       //only one trasmitter
       turn_ON_GSM(get_gsm_power_mode());
+      Watchdog.reset();
       send_rain_data(0);
+      Watchdog.reset();
       receive_lora_data(3);
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
       turn_OFF_GSM(get_gsm_power_mode());
+      Watchdog.reset();
     }
     else if (get_logger_version() == 4)
     {
       //Two transmitter
       turn_ON_GSM(get_gsm_power_mode());
+      Watchdog.reset();
       send_rain_data(0);
+      Watchdog.reset();
       receive_lora_data(4);
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
       turn_OFF_GSM(get_gsm_power_mode());
+      Watchdog.reset();
     }
     else if (get_logger_version() == 5)
     {
       // Three transmitter
       turn_ON_GSM(get_gsm_power_mode());
+      Watchdog.reset();
       send_rain_data(0);
+      Watchdog.reset();
       receive_lora_data(5);
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
       turn_OFF_GSM(get_gsm_power_mode());
+      Watchdog.reset();
     }
     else if (get_logger_version() == 6)
     {
       //default arabica LoRa transmitter
       get_Due_Data(0, get_serverNum_from_flashMem());
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
     }
     else if (get_logger_version() == 7)
     {
       // Sends rain gauge data via LoRa
       get_Due_Data(0, get_serverNum_from_flashMem());
+      Watchdog.reset();
       delay_millis(1000);
+      Watchdog.reset();
       send_rain_data(1);
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
     }
     else if (get_logger_version() == 8)
     {
       // Sends rain gauge data via LoRa
       get_Due_Data(0, get_serverNum_from_flashMem());
+      Watchdog.reset();
       delay_millis(1000);
+      Watchdog.reset();
       send_rain_data(1);
+      Watchdog.reset();
       send_thru_lora(dataToSend);
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
     }
     else if (get_logger_version() == 9)
     {
       // Sends IMU sensor data to GSM
       on_IMU();
+      Watchdog.reset();
       turn_ON_GSM(get_gsm_power_mode());
+      Watchdog.reset();
       send_rain_data(0);
+      Watchdog.reset();
       delay_millis(1000);
+      Watchdog.reset();
       send_thru_gsm(read_IMU_data(get_calib_param()), get_serverNum_from_flashMem());
+      Watchdog.reset();
       delay_millis(1000);
+      Watchdog.reset();
       turn_OFF_GSM(get_gsm_power_mode());
+      Watchdog.reset();
       off_IMU();
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
     }
     else if (get_logger_version() == 10)
     {
       // Sends IMU sensor data to LoRa
       // send_thru_gsm(read_IMU_data(),get_serverNum_from_flashMem());
       on_IMU();
+      Watchdog.reset();
       send_thru_lora(read_IMU_data(get_calib_param()));
+      Watchdog.reset();
       delay_millis(1000);
+      Watchdog.reset();
       send_rain_data(1);
+      Watchdog.reset();
       off_IMU();
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
     }
     else if (get_logger_version() == 11)
     {
       // Sends rain gauge data ONLY
       turn_ON_GSM(get_gsm_power_mode());
+      Watchdog.reset();
       send_rain_data(0);
+      Watchdog.reset();
       delay_millis(1000);
+      Watchdog.reset();
       turn_OFF_GSM(get_gsm_power_mode());
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
     }
     else
     {
       //default arQ like sending
       turn_ON_GSM(get_gsm_power_mode());
+      Watchdog.reset();
       send_rain_data(0);
+      Watchdog.reset();
       get_Due_Data(1, get_serverNum_from_flashMem());
+      Watchdog.reset();
       attachInterrupt(RTCINTPIN, wake, FALLING);
+      Watchdog.reset();
       turn_OFF_GSM(get_gsm_power_mode());
+      Watchdog.reset();
     }
 
     rf95.sleep();
@@ -443,10 +502,15 @@ void loop()
 
 void enable_watchdog()
 {
-  Serial.println("Watchdog Test!");
-  int countDownMS = Watchdog.enable(2000); //max of 16 seconds
+  Serial.println("Watchdog Enabled!");
+  int countDownMS = Watchdog.enable(16000); //max of 16 seconds
 }
 
+void disable_watchdog()
+{
+  Serial.println("Watchdog Disabled!");
+  Watchdog.disable();
+}
 void wakeAndSleep(uint8_t verSion)
 {
   if (OperationFlag)
@@ -545,6 +609,7 @@ void send_thru_lora(char *radiopacket)
 
 void receive_lora_data(uint8_t mode)
 {
+  disable_watchdog();
   int count = 0;
   int count2 = 0;
   unsigned long start = millis();
@@ -750,6 +815,7 @@ void receive_lora_data(uint8_t mode)
   txVoltageB[0] = '\0';
   txVoltageC[0] = '\0';
   flashLed(LED_BUILTIN, 3, 80);
+  enable_watchdog();
 }
 
 /**RTC Pin interrupt
@@ -899,6 +965,7 @@ char *get_password_from_flashMem()
 */
 void send_rain_data(uint8_t sendTo)
 {
+  disable_watchdog();
   char temp[10];
   char volt[10];
   readTimeStamp();
@@ -951,6 +1018,7 @@ void send_rain_data(uint8_t sendTo)
     delay_millis(500);
     resetRainTips();
   }
+  enable_watchdog();
 }
 
 void flashLed(int pin, int times, int wait)
@@ -1067,6 +1135,7 @@ void getPwrdFromMemory()
 */
 void get_Due_Data(uint8_t mode, String serverNum)
 {
+  disable_watchdog();
   unsigned long start = millis();
 
   /*Serial.println("starting delay please wait . . .");
@@ -1169,6 +1238,7 @@ void get_Due_Data(uint8_t mode, String serverNum)
   flashLed(LED_BUILTIN, 4, 90);
   customDueFlag = 0;
   getSensorDataFlag = true;
+  enable_watchdog();
 }
 
 /**
