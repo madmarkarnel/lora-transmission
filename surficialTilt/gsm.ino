@@ -51,6 +51,14 @@ void send_thru_gsm(char *inputMessage, String serverNumber)
   }
 }
 
+/**Commonly used AT commands
+ * AT+CSQ - read current signal strenght
+ * AT+COPS? - reads current network connected to
+ * AT+COPS=?  - reads available networks in the area
+ * AT+CMGF=1  - make gsm receive sms to text format (PDU is in binary - 0) 
+ * AT+CMGR=1  - read 1st sms in inbox
+ * AT+CMGL="ALL"  - read all current received sms
+*/
 void manualGSMcmd()
 {
   char cmdAllchar[80];
