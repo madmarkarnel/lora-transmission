@@ -235,6 +235,7 @@ void getAtcommand()
     Serial.print("Server Number: ");
     Serial.println(get_serverNum_from_flashMem());
     Serial.println("Default server numbers: GLOBE - 639175972526 ; SMART - 639088125642");
+    Serial.println("Default server numbers: GLOBE - 639175388301 ; SMART - 639088125642");
     if (isChangeParam())
       changeServerNumber();
     delay_millis(100);
@@ -416,7 +417,7 @@ void getAtcommand()
   else if (command == "P")
   {
     Serial.print("Rain tips: ");
-    Serial.println(rainTips);
+    Serial.println(rainTips * 2.0);
     delay_millis(20);
     resetRainTips();
   }
