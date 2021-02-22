@@ -97,7 +97,11 @@ bool isPassWordCorrect(char *_passW)
 
 /** Over the air commands
  * Parse sms if valid and execute command
- * REGISTER:SENSLOPE:639954645704
+ * REGISTER:SENSLOPE:639954645704     - register mobile number to control MCU
+ * SENSORPOLL:SENSLOPE:               - force data sampling
+ * SERVERNUMBER:SENSLOPE:639954645704 - change server number in flash memory
+ * ?SERVERNUM:SENSLOPE:               - check current server number
+ * RESET:SENSLOPE:                    - reset MCU
  * SENSLOPE,REGISTERNUM, - register mobile number to control MCU, if not it will ignore SMS
  * SENSLOPE,SENSORPOLL, - force data sampling
  * SENSLOPE,SERVERNUMBER,639954645704 - change server number in flash memory
@@ -190,6 +194,7 @@ void process_data(char *data)
 
     if (isPassWordCorrect(_password) && registerNumber)
     {
+      send_thru_gsm("Resetting datalogger, please register your number again to access OTA commands.", regServer);
       Serial.println("Resetting Watchdog in 2 seconds");
       int countDownMS = Watchdog.enable(2000); //max of 16 seconds
     }
@@ -364,6 +369,24 @@ char *readGSMResponse()
   return response;
 }
 
+/*
+char *readGSMResponse_test()
+{
+  while (GSMSerial.available() > 0)
+  {
+    // processIncomingByte(GSMSerial.read(), 0);
+  }
+}
+
+void process_gsm_data(char *_data)
+{
+  if (strncmp(_data, "OK", 2) == 0)
+  {
+    Serial.println("read 'OK' from GSM");
+  }
+}
+*/
+
 bool gsmReadOK()
 {
   for (int i = 0; i < 100; i++) // 50 - 500ms
@@ -514,7 +537,7 @@ void wakeGSM()
 {
   /* to wake it up, you need to send any AT command, which will be ignored by 
   the module (so no response), followed (within 5 seconds) by "AT+CSCLK=0\r" */
-  
+
   // To save more power +CFUN=0 before SLEEP and +CFUN=1 after WAKE UP.
   GSMSerial.write("AT\r");
   delay_millis(50);
@@ -552,7 +575,7 @@ void resetGSM()
     }
     Serial.println("No reply from GSM");
   }
-  gsmManualNetworkConnect();
+  // gsmManualNetworkConnect();
   Serial.println("Done resetting GSM");
 }
 

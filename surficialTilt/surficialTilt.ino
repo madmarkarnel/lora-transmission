@@ -3,7 +3,7 @@
  * Surficial Tilt IMU sensor added
 
 Features:
-* Sends sensor data via LoRa and GSM
+* Sends sensor data via LoRa or GSM
 * Built-in rtc with configurable wake interrupt
 * Low power mode ~10uA
 * ~0.5mA with IMU sensor
@@ -12,12 +12,12 @@ The circuit:
 * Champagne Board
 * Adafruit Feather M0
 * RFM95 433MHz
-* RTC
+* Real time clock
 * GSM
 
 Created: January 2020
 By : MAD, TEP, BC
-Modified: October 23 2020
+Modified: February 22, 2021
 */
 
 #include <Wire.h>
@@ -67,6 +67,7 @@ Modified: October 23 2020
 #define DUETIMEOUT 210000       // 3.50 minutes timeout
 #define DUEDELAY 60000          // 1.0 minute delay
 #define RAININT A4              //rainfall interrupt pin A4
+#define DEBUGTIMEOUT 300000     //debug timeout in case no data recieved; 60K~1minute
 
 /* Assign a unique ID to this sensor at the same time */
 Adafruit_FXAS21002C gyro = Adafruit_FXAS21002C(0x0021002C);
@@ -103,7 +104,9 @@ volatile bool gsmRingFlag = false;  //gsm interrupt
 volatile bool rainFallFlag = false; //rain tips
 volatile bool OperationFlag = false;
 bool getSensorDataFlag = false;
+bool debug_flag_exit = false;
 
+char firmwareVersion[8] = "21.02.5"; //year . month . revision within the  month
 char station_name[6] = "MADTA";
 char Ctimestamp[13] = "";
 char command[30];
@@ -229,12 +232,18 @@ void setup()
   //GSM power related
   if (get_gsm_power_mode() == 1)
   {
+    resetGSM();
     gsm_network_connect();
     turn_OFF_GSM(get_gsm_power_mode());
   }
   else if (get_gsm_power_mode() == 2)
   {
+    resetGSM();
     gsm_network_connect();
+  }
+  else
+  {
+    resetGSM();
   }
 
   /*Enter DEBUG mode within 10 seconds*/
@@ -264,6 +273,13 @@ void loop()
   while (debug_flag == 1)
   {
     getAtcommand();
+    if (debug_flag_exit)
+    {
+      Serial.println("* * * * * * * * * * * * *");
+      Serial.println("Exiting from DEBUG MENU.");
+      Serial.println("* * * * * * * * * * * * *");
+      debug_flag = 0;
+    }
   }
 
   if (OperationFlag)
@@ -425,7 +441,7 @@ void loop()
     {
       processIncomingByte(GSMSerial.read(), 0);
     }
-    // gsmDeleteReadSmsInbox();
+    gsmDeleteReadSmsInbox();
     turn_OFF_GSM(get_gsm_power_mode());
     attachInterrupt(GSMINT, ringISR, FALLING);
     gsmRingFlag = false;

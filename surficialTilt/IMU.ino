@@ -25,7 +25,7 @@ void on_IMU()
   Serial.println("Turning ON IMU sensor");
   // pinMode(IMU_POWER, OUTPUT);
   // delay(100);
-  turn_ON_due(0); //added for testing only
+  // turn_ON_due(0); //added for testing only
   digitalWrite(IMU_POWER, HIGH);
   delay_millis(100);
   init_IMU();
@@ -37,7 +37,7 @@ void off_IMU()
   Serial.println("Turning OFF IMU sensor");
   delay_millis(100);
   digitalWrite(IMU_POWER, LOW);
-  turn_OFF_due(0);  //added for testing only
+  // turn_OFF_due(0);  //added for testing only
   // pinMode(IMU_POWER, INPUT);
 }
 

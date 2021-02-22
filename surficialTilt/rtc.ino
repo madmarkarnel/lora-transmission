@@ -11,13 +11,22 @@ void getAtcommand()
   // wakeGSM();
   String serial_line, command;
   int i_equals = 0;
+  unsigned long startHere = millis();
+  bool timeToExit;
 
   do
   {
+    timeToExit = timeOutExit(startHere, DEBUGTIMEOUT);
     serial_line = Serial.readStringUntil('\r\n');
-  } while (serial_line == "");
+  } while (serial_line == "" && timeToExit == false);
   serial_line.toUpperCase();
   serial_line.replace("\r", "");
+
+  if (timeToExit)
+  {
+    Serial.println("Exit from debug menu");
+    debug_flag_exit = true;
+  }
 
   // echo command if ate is set, default true
   if (ate)
@@ -173,6 +182,7 @@ void getAtcommand()
       Serial.print("Datalogger verion: ");
       Serial.println(get_logger_version());
     }
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "B")
   {
@@ -180,6 +190,7 @@ void getAtcommand()
     Serial.println(readTemp());
     // Serial.println(readTempRTC());
     // Serial.println(BatteryVoltage(get_logger_version()));
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "C")
   {
@@ -187,37 +198,12 @@ void getAtcommand()
   }
   else if (command == "D")
   {
-    /*
-    if (alarmFromFlashMem() == 0)
-    {
-      Serial.println("Alarm every 00 and 30 minutes.");
-    }
-    else if (alarmFromFlashMem() == 1)
-    {
-      Serial.println("Alarm every 05 and 35 minutes.");
-    }
-    else if (alarmFromFlashMem() == 2)
-    {
-      Serial.println("Alarm every 10 and 40 minutes.");
-    }
-    else if (alarmFromFlashMem() == 3)
-    {
-      Serial.println("Alarm every 15 and 45 minutes.");
-    }
-    else if (alarmFromFlashMem() == 4)
-    {
-      Serial.println("Alarm every 10 minutes.");
-    }
-    else if (alarmFromFlashMem() == 5)
-    {
-      Serial.println("Alarm every 5,15,25. . . minutes.");
-    }
-    */
     Serial.print("Alarm stored: ");
     Serial.println(alarmFromFlashMem());
     print_rtcInterval();
     if (isChangeParam())
       setAlarmInterval();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
     Serial.readStringUntil('\r\n');
   }
   else if (command == "E")
@@ -229,6 +215,7 @@ void getAtcommand()
     rtc.clearINTStatus(); // needed to re-trigger rtc
     debug_flag = 0;
     turn_OFF_GSM(get_gsm_power_mode());
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "F")
   {
@@ -238,7 +225,8 @@ void getAtcommand()
     Serial.println("Default server numbers: GLOBE - 639175388301 ; SMART - 639088125642");
     if (isChangeParam())
       changeServerNumber();
-    delay_millis(100);
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
+    Serial.readStringUntil('\r\n');
   }
   else if (command == "G")
   {
@@ -246,6 +234,7 @@ void getAtcommand()
     Serial.print("Voltage: ");
     Serial.println(readBatteryVoltage(get_logger_version()));
     Serial.println(read_batt_vol(get_logger_version()));
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "H")
   {
@@ -254,9 +243,11 @@ void getAtcommand()
     read_IMU_data(get_calib_param()); //print IMU sensor Datalogger
     delay_millis(1000);
     off_IMU();
-    Serial.println("AT + CMGF");
-    GSMSerial.write("AT+CMGF=1\r");
-    delay_millis(300);
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
+
+    // Serial.println("AT + CMGF");
+    // GSMSerial.write("AT+CMGF=1\r");
+    // delay_millis(300);
 
     /*
     Serial.println("AT + CNMI");
@@ -326,7 +317,7 @@ void getAtcommand()
 
     // Serial.println("delete sms");
     // gsmDeleteReadSmsInbox();
-    Serial.println("end . . .");
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "J")
   {
@@ -335,6 +326,7 @@ void getAtcommand()
     printLoggerVersion();
     if (isChangeParam())
       setLoggerVersion();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
     Serial.readStringUntil('\r\n');
   }
   else if (command == "K")
@@ -343,15 +335,18 @@ void getAtcommand()
     Serial.println(get_password_from_flashMem());
     if (isChangeParam())
       changePassword();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
     Serial.readStringUntil('\r\n');
   }
   else if (command == "L")
   {
     manualGSMcmd();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "M")
   {
     send_rain_data(1);
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "N")
   {
@@ -407,12 +402,14 @@ void getAtcommand()
 
     if (isChangeParam())
       inputLoggerNames();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
     Serial.readStringUntil('\r\n');
   }
   else if (command == "O")
   {
     Serial.print("CSQ: ");
     Serial.println(readCSQ());
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "P")
   {
@@ -420,6 +417,7 @@ void getAtcommand()
     Serial.println(rainTips * 2.0);
     delay_millis(20);
     resetRainTips();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "Q")
   {
@@ -429,16 +427,13 @@ void getAtcommand()
     Serial.println("[1] Calibrated IMU data");
     if (isChangeParam())
       setIMUdataRawCalib();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
     Serial.readStringUntil('\r\n');
   }
   else if (command == "R")
   {
     resetGSM();
-    // on_IMU();
-    // send_thru_lora(read_IMU_data(get_calib_param()));
-    // delay_millis(1000);
-    // send_rain_data(1);
-    // off_IMU();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "S")
   {
@@ -447,6 +442,8 @@ void getAtcommand()
     Serial.println(Ctimestamp);
     if (isChangeParam())
       setupTime();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
+    Serial.readStringUntil('\r\n');
   }
   else if (command == "T")
   {
@@ -467,16 +464,19 @@ void getAtcommand()
     Serial.print("Volt: ");
     Serial.println(txVoltageC);
     get_rssi(5);
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "U")
   {
-    // Serial.println("sending rain gauge data . . .");
-    // send_rain_data(0);
-    wakeGSM();
+    Serial.println("sending rain gauge data . . .");
+    send_rain_data(0);
+    // wakeGSM();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "V")
   {
     turn_OFF_GSM(get_gsm_power_mode());
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "W")
   {
@@ -487,6 +487,7 @@ void getAtcommand()
     Serial.println("[2] GSM power always ON");
     if (isChangeParam())
       setGsmPowerMode();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
     Serial.readStringUntil('\r\n');
   }
   else if (command == "X")
@@ -494,31 +495,45 @@ void getAtcommand()
     Serial.print("Datalogger Version: ");
     Serial.println(get_logger_version());
     receive_lora_data(get_logger_version());
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "Y")
   {
-    // test
+    unsigned long startHere = millis();
     char specialMsg[200];
-    Serial.setTimeout(20000);
     Serial.print("Enter message to send: ");
-    String gsmCmd = Serial.readStringUntil('\n');
-    Serial.println(gsmCmd);
-    gsmCmd.toCharArray(specialMsg, sizeof(specialMsg));
-    send_thru_gsm(specialMsg, get_serverNum_from_flashMem());
+    while (!Serial.available())
+    {
+      if (timeOutExit(startHere, DEBUGTIMEOUT))
+      {
+        debug_flag_exit = true;
+        break;
+      }
+    }
+    if (Serial.available())
+    {
+      String gsmCmd = Serial.readStringUntil('\n');
+      Serial.println(gsmCmd);
+      gsmCmd.toCharArray(specialMsg, sizeof(specialMsg));
+      GSMSerial.write("AT\r");
+      delay_millis(300);
+      send_thru_gsm(specialMsg, get_serverNum_from_flashMem());
+    }
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
   }
   else if (command == "Z")
   {
     Serial.print("Current command: ");
     sensCommand = passCommand.read();
     Serial.println(sensCommand.senslopeCommand);
-    // Serial.print("Sensor Name: ");
-    // Serial.println(sensCommand.stationName);
     if (isChangeParam())
       changeSensCommand();
+    Serial.println("* * * * * * * * * * * * * * * * * * * *");
     Serial.readStringUntil('\r\n');
   }
   else
   {
+    Serial.println(" ");
     Serial.println("Command invalid!");
     Serial.println(" ");
   }
@@ -526,7 +541,10 @@ void getAtcommand()
 
 void printMenu()
 {
-  Serial.println(F("-----------------------------------------------"));
+  Serial.println(F(" "));
+  Serial.print(F("Firmware Version: "));
+  Serial.println(F(firmwareVersion));
+  Serial.println(F("****************************************"));
   Serial.println(F("[A] Sample sensor data"));
   Serial.println(F("[B] Read RTC temperature."));
   Serial.println(F("[C] Print this menu"));
@@ -553,7 +571,8 @@ void printMenu()
   Serial.println(F("[X] Wait for LoRa data"));
   Serial.println(F("[Y] Send CUSTOM SMS"));
   Serial.println(F("[Z] Change SENSLOPE command."));
-  Serial.println(F("-----------------------------------------------"));
+  Serial.println(F("****************************************"));
+  Serial.println(F(" "));
 }
 
 void print_rtcInterval()
@@ -570,20 +589,25 @@ void print_rtcInterval()
 
 void setIMUdataRawCalib()
 {
+  unsigned long startHere = millis();
   int raw_calib;
   Serial.print("Enter IMU data mode: ");
   while (!Serial.available())
   {
+    if (timeOutExit(startHere, DEBUGTIMEOUT))
+    {
+      debug_flag_exit = true;
+      break;
+    }
   }
   if (Serial.available())
   {
-    Serial.setTimeout(8000);
     raw_calib = Serial.parseInt();
     Serial.print("IMU mode = ");
     Serial.println(raw_calib);
+    delay_millis(50);
+    imuRawCalib.write(raw_calib);
   }
-  delay_millis(50);
-  imuRawCalib.write(raw_calib);
 }
 
 uint8_t get_calib_param()
@@ -595,18 +619,23 @@ uint8_t get_calib_param()
 void setLoggerVersion()
 {
   int version;
+  unsigned long startHere = millis();
   Serial.print("Enter datalogger version: ");
   while (!Serial.available())
   {
+    if (timeOutExit(startHere, DEBUGTIMEOUT))
+    {
+      debug_flag_exit = true;
+      break;
+    }
   }
   if (Serial.available())
   {
-    Serial.setTimeout(8000);
     version = Serial.parseInt();
     Serial.println(version);
+    delay_millis(50);
+    loggerVersion.write(version);
   }
-  delay_millis(50);
-  loggerVersion.write(version);
 }
 
 void printLoggerVersion()
@@ -634,18 +663,24 @@ uint8_t get_logger_version()
 void setGsmPowerMode()
 {
   int gsm_power;
+  unsigned long startHere = millis();
   Serial.print("Enter GSM mode setting: ");
   while (!Serial.available())
   {
+    if (timeOutExit(startHere, DEBUGTIMEOUT))
+    {
+      debug_flag_exit = true;
+      break;
+    }
   }
   if (Serial.available())
   {
     Serial.setTimeout(8000);
     gsm_power = Serial.parseInt();
     Serial.println(gsm_power);
+    delay_millis(50);
+    gsmPower.write(gsm_power);
   }
-  delay_millis(50);
-  gsmPower.write(gsm_power);
 }
 
 uint8_t get_gsm_power_mode()
@@ -656,21 +691,25 @@ uint8_t get_gsm_power_mode()
 
 void setAlarmInterval()
 {
+  unsigned long startHere = millis();
   int alarmSelect;
   Serial.print("Enter alarm settings: ");
-  delay_millis(1000);
+
   while (!Serial.available())
   {
+    if (timeOutExit(startHere, DEBUGTIMEOUT))
+    {
+      debug_flag_exit = true;
+      break;
+    }
   }
   if (Serial.available())
   {
-    Serial.setTimeout(8000);
     alarmSelect = Serial.parseInt();
     Serial.println(alarmSelect);
+    delay_millis(50);
+    alarmStorage.write(alarmSelect);
   }
-  delay_millis(50);
-  alarmStorage.write(alarmSelect);
-  delay_millis(50);
 }
 
 uint8_t alarmFromFlashMem()
@@ -682,76 +721,132 @@ uint8_t alarmFromFlashMem()
 
 void changeSensCommand()
 {
-  Serial.setTimeout(15000);
+  unsigned long startHere = millis();
   Serial.print("Insert DUE command: ");
-  String dynaCommand = Serial.readStringUntil('\n');
-  Serial.println(dynaCommand);
-  dynaCommand.toCharArray(sensCommand.senslopeCommand, 50);
-  passCommand.write(sensCommand); //save to flash memory
+  while (!Serial.available())
+  {
+    if (timeOutExit(startHere, DEBUGTIMEOUT))
+    {
+      debug_flag_exit = true;
+      break;
+    }
+  }
+  if (Serial.available())
+  {
+    String dynaCommand = Serial.readStringUntil('\n');
+    Serial.println(dynaCommand);
+    dynaCommand.toCharArray(sensCommand.senslopeCommand, 50);
+    passCommand.write(sensCommand); //save to flash memory
+  }
 }
 
 void inputLoggerNames()
 {
+  unsigned long startHere = millis();
   Serial.setTimeout(20000);
   if (get_logger_version() == 1)
   {
     Serial.print("Input name of gateway SENSOR: ");
-    String inputLoggerA = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerA);
-    Serial.print("Input name of remote SENSOR: ");
-    String inputLoggerB = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerB);
-    inputLoggerA.toCharArray(loggerName.sensorA, 10);
-    inputLoggerB.toCharArray(loggerName.sensorB, 10);
-    flashLoggerName.write(loggerName);
+    while (!Serial.available())
+    {
+      if (timeOutExit(startHere, DEBUGTIMEOUT))
+      {
+        debug_flag_exit = true;
+        break;
+      }
+    }
+    if (Serial.available())
+    {
+      String inputLoggerA = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerA);
+      Serial.print("Input name of remote SENSOR: ");
+      String inputLoggerB = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerB);
+      inputLoggerA.toCharArray(loggerName.sensorA, 10);
+      inputLoggerB.toCharArray(loggerName.sensorB, 10);
+      flashLoggerName.write(loggerName);
+    }
   }
   else if (get_logger_version() == 3)
   {
     Serial.print("Input name of GATEWAY: ");
-    String inputLoggerA = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerA);
-    Serial.print("Input name of remote SENSOR: ");
-    String inputLoggerB = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerB);
-    inputLoggerA.toCharArray(loggerName.sensorA, 10);
-    inputLoggerB.toCharArray(loggerName.sensorB, 10);
-    flashLoggerName.write(loggerName);
+    while (!Serial.available())
+    {
+      if (timeOutExit(startHere, DEBUGTIMEOUT))
+      {
+        debug_flag_exit = true;
+        break;
+      }
+    }
+    if (Serial.available())
+    {
+      String inputLoggerA = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerA);
+      Serial.print("Input name of remote SENSOR: ");
+      String inputLoggerB = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerB);
+      inputLoggerA.toCharArray(loggerName.sensorA, 10);
+      inputLoggerB.toCharArray(loggerName.sensorB, 10);
+      flashLoggerName.write(loggerName);
+    }
   }
   else if (get_logger_version() == 4)
   {
     Serial.print("Input name of GATEWAY: ");
-    String inputLoggerA = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerA);
-    Serial.print("Input name of remote SENSOR A: ");
-    String inputLoggerB = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerB);
-    Serial.print("Input name of remote SENSOR B: ");
-    String inputLoggerC = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerC);
-    inputLoggerA.toCharArray(loggerName.sensorA, 10);
-    inputLoggerB.toCharArray(loggerName.sensorB, 10);
-    inputLoggerC.toCharArray(loggerName.sensorC, 10);
-    flashLoggerName.write(loggerName);
+    while (!Serial.available())
+    {
+      if (timeOutExit(startHere, DEBUGTIMEOUT))
+      {
+        debug_flag_exit = true;
+        break;
+      }
+    }
+    if (Serial.available())
+    {
+      String inputLoggerA = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerA);
+      Serial.print("Input name of remote SENSOR A: ");
+      String inputLoggerB = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerB);
+      Serial.print("Input name of remote SENSOR B: ");
+      String inputLoggerC = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerC);
+      inputLoggerA.toCharArray(loggerName.sensorA, 10);
+      inputLoggerB.toCharArray(loggerName.sensorB, 10);
+      inputLoggerC.toCharArray(loggerName.sensorC, 10);
+      flashLoggerName.write(loggerName);
+    }
   }
   else if (get_logger_version() == 5)
   {
     Serial.print("Input name of GATEWAY: ");
-    String inputLoggerA = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerA);
-    Serial.print("Input name of remote SENSOR A: ");
-    String inputLoggerB = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerB);
-    Serial.print("Input name of remote SENSOR B: ");
-    String inputLoggerC = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerC);
-    Serial.print("Input name of remote SENSOR C: ");
-    String inputLoggerD = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerD);
-    inputLoggerA.toCharArray(loggerName.sensorA, 10);
-    inputLoggerB.toCharArray(loggerName.sensorB, 10);
-    inputLoggerC.toCharArray(loggerName.sensorC, 10);
-    inputLoggerD.toCharArray(loggerName.sensorD, 10);
-    flashLoggerName.write(loggerName);
+    while (!Serial.available())
+    {
+      if (timeOutExit(startHere, DEBUGTIMEOUT))
+      {
+        debug_flag_exit = true;
+        break;
+      }
+    }
+    if (Serial.available())
+    {
+      String inputLoggerA = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerA);
+      Serial.print("Input name of remote SENSOR A: ");
+      String inputLoggerB = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerB);
+      Serial.print("Input name of remote SENSOR B: ");
+      String inputLoggerC = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerC);
+      Serial.print("Input name of remote SENSOR C: ");
+      String inputLoggerD = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerD);
+      inputLoggerA.toCharArray(loggerName.sensorA, 10);
+      inputLoggerB.toCharArray(loggerName.sensorB, 10);
+      inputLoggerC.toCharArray(loggerName.sensorC, 10);
+      inputLoggerD.toCharArray(loggerName.sensorD, 10);
+      flashLoggerName.write(loggerName);
+    }
   }
   else
   {
@@ -775,46 +870,81 @@ void inputLoggerNames()
     flashLoggerName.write(loggerName);
     */
     Serial.print("Input name of SENSOR: ");
-    String inputLoggerA = Serial.readStringUntil('\n');
-    Serial.println(inputLoggerA);
-    // Serial.print("Input name of remote SENSOR: ");
-    // String inputLoggerB = Serial.readStringUntil('\n');
-    // Serial.println(inputLoggerB);
-    inputLoggerA.toCharArray(loggerName.sensorA, 10);
-    // inputLoggerB.toCharArray(loggerName.sensorB, 10);
-    flashLoggerName.write(loggerName);
+    while (!Serial.available())
+    {
+      if (timeOutExit(startHere, DEBUGTIMEOUT))
+      {
+        debug_flag_exit = true;
+        break;
+      }
+    }
+    if (Serial.available())
+    {
+      String inputLoggerA = Serial.readStringUntil('\n');
+      Serial.println(inputLoggerA);
+      inputLoggerA.toCharArray(loggerName.sensorA, 10);
+      flashLoggerName.write(loggerName);
+    }
   }
 }
 
 void changeServerNumber()
 {
-  Serial.setTimeout(15000);
+  unsigned long startHere = millis();
   // Serial.println("Insert server number GLOBE - 639175972526 ; SMART - 639088125642");
   Serial.print("Enter new server number: ");
-  String ser_num = Serial.readStringUntil('\n');
-  Serial.println(ser_num);
-  ser_num.toCharArray(flashServerNumber.inputNumber, 50);
-  newServerNum.write(flashServerNumber); //save to flash memory
+  while (!Serial.available())
+  {
+    if (timeOutExit(startHere, DEBUGTIMEOUT))
+    {
+      debug_flag_exit = true;
+      break;
+    }
+  }
+  if (Serial.available())
+  {
+    String ser_num = Serial.readStringUntil('\n');
+    Serial.println(ser_num);
+    ser_num.toCharArray(flashServerNumber.inputNumber, 50);
+    newServerNum.write(flashServerNumber); //save to flash memory
+  }
 }
 
 void changePassword()
 {
+  unsigned long startHere = millis();
   Serial.print("Enter MCU password: ");
-  Serial.setTimeout(15000);
-  String inPass = Serial.readStringUntil('\n');
-  // inPass += ",";
-  Serial.println(inPass);
-  inPass.toCharArray(flashPassword.keyword, 50);
-  flashPasswordIn.write(flashPassword);
+  while (!Serial.available())
+  {
+    if (timeOutExit(startHere, DEBUGTIMEOUT))
+    {
+      debug_flag_exit = true;
+      break;
+    }
+  }
+  if (Serial.available())
+  {
+    String inPass = Serial.readStringUntil('\n');
+    // inPass += ",";
+    Serial.println(inPass);
+    inPass.toCharArray(flashPassword.keyword, 50);
+    flashPasswordIn.write(flashPassword);
+  }
 }
 
 void setupTime()
 {
+  unsigned long startHere = millis();
   int MM = 0, DD = 0, YY = 0, hh = 0, mm = 0, ss = 0, dd = 0;
-  //Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));
+  Serial.println(F("\nSet time and date in this format: YY,MM,DD,hh,mm,ss,dd[0-6]Mon-Sun"));
   // delay(10);
   while (!Serial.available())
   {
+    if (timeOutExit(startHere, DEBUGTIMEOUT))
+    {
+      debug_flag_exit = true;
+      break;
+    }
   }
   if (Serial.available())
   {
@@ -825,11 +955,12 @@ void setupTime()
     mm = Serial.parseInt();
     ss = Serial.parseInt();
     dd = Serial.parseInt();
+    delay_millis(10);
+    adjustDate(YY, MM, DD, hh, mm, ss, dd);
+    readTimeStamp();
+    Serial.println("Current timestamp: ");
+    Serial.println(Ctimestamp);
   }
-  delay(10);
-  adjustDate(YY, MM, DD, hh, mm, ss, dd);
-  readTimeStamp();
-  Serial.println(Ctimestamp);
 }
 
 void adjustDate(int year, int month, int date, int hour, int min, int sec, int weekday)
@@ -845,8 +976,6 @@ float readTemp()
   float temp;
   rtc.convertTemperature();
   temp = rtc.getTemperature();
-  // Serial.print(rtc.getTemperature());
-  // dtostrf(temp, 5, 2, temperature);
   return temp;
 }
 
@@ -1188,22 +1317,56 @@ bool isChangeParam()
 {
   String serial_line;
   unsigned long serStart = millis();
+  unsigned long startHere = millis();
+  bool timeToExit;
   Serial.println(" ");
   Serial.println("Enter C to change:");
+
   do
   {
+    timeToExit = timeOutExit(startHere, DEBUGTIMEOUT);
     serial_line = Serial.readStringUntil('\r\n');
-  } while ((serial_line == "") && ((millis() - serStart) < 10000));
+  } while (serial_line == "" && timeToExit == false);
+  // } while ((serial_line == "") && ((millis() - serStart) < DEBUGTIMEOUT));
   serial_line.toUpperCase();
   serial_line.replace("\r", "");
+
+  if (timeToExit)
+  {
+    Serial.println("Exiting . . .");
+    debug_flag_exit = true;
+  }
+
   if (serial_line == "C")
   {
     return true;
   }
   else
   {
-    printMenu();
+    // printMenu();
+    Serial.println(" ");
     Serial.println("Change cancelled. Reselect.");
+    Serial.println(" ");
+    return false;
+  }
+}
+
+bool timeOutExit(unsigned long _startTimeOut, int _timeOut)
+{
+  if ((millis() - _startTimeOut) > _timeOut)
+  {
+    _startTimeOut = millis();
+    Serial.println(" ");
+    Serial.println("*****************************");
+    Serial.print("Timeout reached: ");
+    Serial.print(_timeOut / 1000);
+    Serial.println(" seconds");
+    Serial.println("*****************************");
+    Serial.println(" ");
+    return true;
+  }
+  else
+  {
     return false;
   }
 }
